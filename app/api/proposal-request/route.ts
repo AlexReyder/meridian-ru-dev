@@ -86,12 +86,12 @@ function buildUploadedAssetsEmailLines(
 function buildWizardEmailText(
   requestId: string | number,
   data: Record<string, unknown>,
+  referenceLinks: string[],
   uploadedAssets: Array<{ filename: string; downloadUrl: string }>,
 ) {
-  const referenceLinks =
-    Array.isArray(data.referenceLinks) && data.referenceLinks.length
-      ? data.referenceLinks.map((item) => `- ${String(item)}`)
-      : ['—']
+  const referenceLines = referenceLinks.length
+    ? referenceLinks.map((item) => `- ${item}`)
+    : ['—']
 
   return [
     'Новая заявка на предложение',
@@ -126,7 +126,7 @@ function buildWizardEmailText(
     }`,
     '',
     'Референсы:',
-    ...referenceLinks,
+    ...referenceLines,
     '',
     'Файлы:',
     ...buildUploadedAssetsEmailLines(uploadedAssets),
@@ -147,10 +147,12 @@ function buildUploadEmailText(
     name: string
     email: string
     description: string
-    links: string[]
   },
+  links: string[],
   uploadedAssets: Array<{ filename: string; downloadUrl: string }>,
 ) {
+  const linkLines = links.length ? links : ['—']
+
   return [
     'Новая загрузка материалов',
     `ID заявки: ${requestId}`,
@@ -165,7 +167,7 @@ function buildUploadEmailText(
     data.description,
     '',
     'Ссылки:',
-    ...(data.links.length ? data.links : ['—']),
+    ...linkLines,
     '',
     'Файлы:',
     ...buildUploadedAssetsEmailLines(uploadedAssets),
@@ -320,13 +322,22 @@ export async function POST(req: Request) {
           )
 
           try {
+            const wizardReferenceLinks = parsed.data.referenceLinks.filter(
+              (item) => typeof item === 'string' && item.trim().length > 0,
+            )
+
             await payload.sendEmail({
               to:
                 process.env.PROPOSAL_NOTIFICATION_EMAIL ||
                 process.env.SMTP_USER ||
                 'mail@anx-studio.ru',
               subject: `[Новая заявка][Бриф][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
-              text: buildWizardEmailText(requestDoc.id, parsed.data, uploadedAssetDocs),
+              text: buildWizardEmailText(
+                requestDoc.id,
+                parsed.data,
+                wizardReferenceLinks,
+                uploadedAssetDocs,
+              ),
             })
           } catch (emailError) {
             console.error('Proposal wizard email error:', emailError)
@@ -413,6 +424,10 @@ export async function POST(req: Request) {
           )
 
           try {
+            const uploadLinks = parsed.data.links.filter(
+              (item) => typeof item === 'string' && item.trim().length > 0,
+            )
+
             await payload.sendEmail({
               to:
                 process.env.PROPOSAL_NOTIFICATION_EMAIL ||
@@ -426,8 +441,8 @@ export async function POST(req: Request) {
                   name: parsed.data.name,
                   email: parsed.data.email,
                   description: parsed.data.description,
-                  links: parsed.data.links,
                 },
+                uploadLinks,
                 uploadedAssetDocs,
               ),
             })

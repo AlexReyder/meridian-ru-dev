@@ -1528,7 +1528,7 @@ function ProposalWizard({
                           variant="outline"
                           className="h-10 px-4"
                         >
-                          <Plus className="h-4 w-4" />
+                          <LinkIcon className="h-4 w-4" />
                         </Button>
                       </div>
 
