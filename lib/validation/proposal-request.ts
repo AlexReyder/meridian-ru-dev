@@ -28,6 +28,12 @@ const ALLOWED_PROPOSAL_EXTENSIONS = [
   '.webp',
 ] as const
 
+export type ProposalFileMeta = {
+  name: string
+  size: number
+  type: string
+}
+
 function isFile(value: unknown): value is File {
   return typeof globalThis.File !== 'undefined' && value instanceof globalThis.File
 }
@@ -37,7 +43,7 @@ function hasAllowedExtension(filename: string) {
   return ALLOWED_PROPOSAL_EXTENSIONS.some((ext) => lower.endsWith(ext))
 }
 
-export function validateProposalFile(file: File) {
+export function validateProposalFileMeta(file: ProposalFileMeta) {
   if (file.size > MAX_PROPOSAL_FILE_SIZE) {
     return 'Файл слишком большой'
   }
@@ -53,6 +59,14 @@ export function validateProposalFile(file: File) {
   }
 
   return null
+}
+
+export function validateProposalFile(file: File) {
+  return validateProposalFileMeta({
+    name: file.name,
+    size: file.size,
+    type: file.type,
+  })
 }
 
 export const proposalFilesSchema = z
@@ -75,6 +89,11 @@ export const proposalFilesSchema = z
       }
     })
   })
+
+export const proposalUploadedAssetRefSchema = z.object({
+  id: z.union([z.string(), z.number()]),
+  token: z.string().min(1, 'Некорректный токен файла'),
+})
 
 export const proposalWizardSchema = z.object({
   mode: z.literal('wizard'),
@@ -101,6 +120,7 @@ export const proposalWizardSchema = z.object({
         .max(500, 'Референс слишком длинный'),
     )
     .default([]),
+  uploadedAssets: z.array(proposalUploadedAssetRefSchema).default([]),
 
   timeline: z.string().optional(),
   budget: z.string().optional(),
@@ -127,6 +147,7 @@ export const proposalUploadSchema = z.object({
   email: z.string().min(1, 'Введите email').email('Введите корректный email'),
   description: z.string().min(1, 'Добавьте описание'),
   links: z.array(z.string().url('Каждая ссылка должна быть корректным URL')).default([]),
+  uploadedAssets: z.array(proposalUploadedAssetRefSchema).default([]),
 })
 
 export function getFirstZodError(error: z.ZodError) {

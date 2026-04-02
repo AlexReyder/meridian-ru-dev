@@ -71,6 +71,7 @@ export interface Config {
     media: Media;
     pages: Page;
     'proposal-files': ProposalFile;
+    'proposal-upload-assets': ProposalUploadAsset;
     'proposal-requests': ProposalRequest;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -83,6 +84,7 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     'proposal-files': ProposalFilesSelect<false> | ProposalFilesSelect<true>;
+    'proposal-upload-assets': ProposalUploadAssetsSelect<false> | ProposalUploadAssetsSelect<true>;
     'proposal-requests': ProposalRequestsSelect<false> | ProposalRequestsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -1922,7 +1924,25 @@ export interface ProposalRequest {
         id?: string | null;
       }[]
     | null;
+  uploadedAssets?: (number | ProposalUploadAsset)[] | null;
   files?: (number | ProposalFile)[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "proposal-upload-assets".
+ */
+export interface ProposalUploadAsset {
+  id: number;
+  filename: string;
+  mimeType: string;
+  filesize: number;
+  storageKey: string;
+  downloadUrl: string;
+  uploadToken: string;
+  status: 'pending' | 'uploaded' | 'attached';
+  request?: (number | null) | ProposalRequest;
   updatedAt: string;
   createdAt: string;
 }
@@ -1965,6 +1985,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'proposal-files';
         value: number | ProposalFile;
+      } | null)
+    | ({
+        relationTo: 'proposal-upload-assets';
+        value: number | ProposalUploadAsset;
       } | null)
     | ({
         relationTo: 'proposal-requests';
@@ -3547,6 +3571,22 @@ export interface ProposalFilesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "proposal-upload-assets_select".
+ */
+export interface ProposalUploadAssetsSelect<T extends boolean = true> {
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  storageKey?: T;
+  downloadUrl?: T;
+  uploadToken?: T;
+  status?: T;
+  request?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "proposal-requests_select".
  */
 export interface ProposalRequestsSelect<T extends boolean = true> {
@@ -3565,6 +3605,7 @@ export interface ProposalRequestsSelect<T extends boolean = true> {
         url?: T;
         id?: T;
       };
+  uploadedAssets?: T;
   files?: T;
   updatedAt?: T;
   createdAt?: T;

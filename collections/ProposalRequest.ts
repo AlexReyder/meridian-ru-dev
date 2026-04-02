@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 export const ProposalRequests: CollectionConfig = {
   slug: 'proposal-requests',
-   labels: {
+  labels: {
     singular: 'Заявка',
     plural: 'Заявки',
   },
@@ -76,10 +76,19 @@ export const ProposalRequests: CollectionConfig = {
       ],
     },
     {
+      name: 'uploadedAssets',
+      type: 'relationship',
+      relationTo: 'proposal-upload-assets',
+      hasMany: true,
+    },
+    {
       name: 'files',
       type: 'relationship',
       relationTo: 'proposal-files',
       hasMany: true,
+      admin: {
+        hidden: true,
+      },
     },
   ],
 }

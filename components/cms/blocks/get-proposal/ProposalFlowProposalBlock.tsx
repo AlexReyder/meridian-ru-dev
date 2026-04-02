@@ -33,9 +33,10 @@ import {
 } from '@/lib/routes'
 import {
   getFirstZodError,
-  proposalFilesSchema,
+  MAX_PROPOSAL_FILES,
   proposalUploadSchema,
   proposalWizardSchema,
+  validateProposalFileMeta,
 } from '@/lib/validation/proposal-request'
 import { cn } from '@/lib/utils'
 
@@ -117,7 +118,6 @@ type WizardData = {
 
   materials: string[]
   referenceLinks: string[]
-  uploadedFiles: File[]
 
   timeline?: string
   budget?: string
@@ -133,6 +133,37 @@ type WizardData = {
   noCallFirst?: boolean
   expertReview?: boolean
   nda?: boolean
+}
+
+type UploadedAssetRef = {
+  id: string | number
+  token: string
+}
+
+type UploadedAssetItem = {
+  localId: string
+  filename: string
+  mimeType: string
+  filesize: number
+  progress: number
+  status: 'uploading' | 'uploaded' | 'error'
+  assetId?: string | number
+  token?: string
+  downloadUrl?: string
+  error?: string
+}
+
+type PresignResponse = {
+  ok: true
+  uploadUrl: string
+  asset: {
+    id: string | number
+    token: string
+    filename: string
+    mimeType: string
+    filesize: number
+    downloadUrl: string
+  }
 }
 
 const PROCESS_ICONS: Record<string, LucideIcon> = {
@@ -159,7 +190,7 @@ function appendBoolean(formData: FormData, key: string, value?: boolean) {
   formData.append(key, value ? 'true' : 'false')
 }
 
-function appendJsonArray(formData: FormData, key: string, value: string[]) {
+function appendJson(formData: FormData, key: string, value: unknown) {
   formData.append(key, JSON.stringify(value))
 }
 
@@ -214,6 +245,126 @@ function validateWizardStep(step: number, data: WizardData) {
   }
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+async function requestUploadSlot(file: File) {
+  const response = await fetch('/api/proposal-upload/presign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      filename: file.name,
+      mimeType: file.type,
+      filesize: file.size,
+    }),
+  })
+
+  const result = (await response.json()) as
+    | PresignResponse
+    | { ok: false; error?: string }
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || 'Не удалось подготовить загрузку файла')
+  }
+
+  return result
+}
+
+function uploadFileWithProgress(
+  uploadUrl: string,
+  file: File,
+  onProgress: (progress: number) => void,
+) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (!event.lengthComputable) return
+      const progress = Math.round((event.loaded / event.total) * 100)
+      onProgress(progress)
+    })
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100)
+        resolve()
+        return
+      }
+
+      reject(new Error('Не удалось загрузить файл в хранилище'))
+    })
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Ошибка сети при загрузке файла'))
+    })
+
+    xhr.open('PUT', uploadUrl)
+
+    if (file.type) {
+      xhr.setRequestHeader('Content-Type', file.type)
+    }
+
+    xhr.send(file)
+  })
+}
+
+async function completeUpload(assetId: string | number, token: string) {
+  const response = await fetch('/api/proposal-upload/complete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      assetId,
+      token,
+    }),
+  })
+
+  const result = (await response.json()) as
+    | {
+        ok: true
+        asset: {
+          id: string | number
+          filename: string
+          downloadUrl: string
+          status: string
+        }
+      }
+    | { ok: false; error?: string }
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || 'Не удалось завершить загрузку файла')
+  }
+
+  return result.asset
+}
+
+async function deleteUploadedAsset(assetId: string | number, token: string) {
+  const response = await fetch('/api/proposal-upload/delete', {
+    method: 'DELETE',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      assetId,
+      token,
+    }),
+  })
+
+  const result = (await response.json()) as
+    | { ok: true }
+    | { ok: false; error?: string }
+
+  if (!response.ok || !result?.ok) {
+    throw new Error(result?.error || 'Не удалось удалить файл')
+  }
+}
+
 function ChoiceCard({
   active,
   title,
@@ -246,52 +397,6 @@ function ChoiceCard({
         </div>
       ) : null}
     </button>
-  )
-}
-
-function UploadChip({
-  label,
-  icon,
-  rtl,
-  onRemove,
-  forceLTR = icon === 'link',
-}: {
-  label: string
-  icon: 'file' | 'link'
-  rtl: boolean
-  onRemove: () => void
-  forceLTR?: boolean
-}) {
-  return (
-    <div
-      className={cn(
-        'flex items-center justify-between rounded-sm bg-secondary/30 p-3',
-        rtl && 'flex-row-reverse',
-      )}
-    >
-      <div className={cn('flex items-center gap-3', rtl && 'flex-row-reverse')}>
-        {icon === 'file' ? (
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <LinkIcon className="h-4 w-4 text-muted-foreground" />
-        )}
-
-        <span
-          className="max-w-[420px] truncate text-sm text-foreground"
-          dir={forceLTR ? 'ltr' : undefined}
-        >
-          {label}
-        </span>
-      </div>
-
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <X className="h-4 w-4" />
-      </button>
-    </div>
   )
 }
 
@@ -357,6 +462,254 @@ function WizardStepHeader({
       </div>
     </div>
   )
+}
+
+function DirectUploadItem({
+  item,
+  rtl,
+  onRemove,
+}: {
+  item: UploadedAssetItem
+  rtl: boolean
+  onRemove: () => void
+}) {
+  const statusLabel =
+    item.status === 'uploading'
+      ? `Загрузка ${item.progress}%`
+      : item.status === 'uploaded'
+        ? 'Загружен'
+        : 'Ошибка'
+
+  return (
+    <div className="rounded-sm bg-secondary/30 p-3">
+      <div
+        className={cn(
+          'flex items-start justify-between gap-3',
+          rtl && 'flex-row-reverse',
+        )}
+      >
+        <div className={cn('flex items-start gap-3', rtl && 'flex-row-reverse')}>
+          <FileText className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          <div className={rtl ? 'text-right' : 'text-left'}>
+            <div className="max-w-[420px] truncate text-sm text-foreground" dir="ltr">
+              {item.filename}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {formatFileSize(item.filesize)} · {statusLabel}
+            </div>
+            {item.status === 'uploaded' && item.downloadUrl ? (
+              <a
+                href={item.downloadUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-block text-xs text-foreground/80 hover:underline"
+              >
+                Открыть файл
+              </a>
+            ) : null}
+            {item.status === 'error' && item.error ? (
+              <div className="mt-1 text-xs text-destructive">{item.error}</div>
+            ) : null}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={item.status === 'uploading'}
+          className="text-muted-foreground transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {item.status === 'uploading' ? (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
+          <div
+            className="h-full rounded-full bg-foreground transition-all"
+            style={{ width: `${Math.max(item.progress, 4)}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function DirectUploadSection({
+  label,
+  title,
+  hint,
+  rtl,
+  items,
+  onFilesSelected,
+  onRemove,
+  uploadingCount,
+}: {
+  label?: string
+  title: string
+  hint: string
+  rtl: boolean
+  items: UploadedAssetItem[]
+  onFilesSelected: (files: File[]) => Promise<void> | void
+  onRemove: (localId: string) => Promise<void> | void
+  uploadingCount: number
+}) {
+  const handleFileInput = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+
+    if (!files.length) return
+    await onFilesSelected(files)
+  }
+
+  return (
+    <div>
+      {label ? (
+        <label className="mb-3 block text-xs uppercase tracking-wider text-muted-foreground">
+          {label}
+        </label>
+      ) : null}
+
+      <label className="block cursor-pointer">
+        <input type="file" multiple className="hidden" onChange={handleFileInput} />
+
+        <div className="rounded-sm border-2 border-dashed border-border p-8 text-center transition-colors hover:border-foreground/30">
+          <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+          <p className="mb-1 text-sm text-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
+          {uploadingCount > 0 ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Загружается файлов: {uploadingCount}
+            </p>
+          ) : null}
+        </div>
+      </label>
+
+      {items.length ? (
+        <div className="mt-4 space-y-2">
+          {items.map((item) => (
+            <DirectUploadItem
+              key={item.localId}
+              item={item}
+              rtl={rtl}
+              onRemove={() => onRemove(item.localId)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function useProposalDirectUploads() {
+  const [items, setItems] = useState<UploadedAssetItem[]>([])
+
+  const patchItem = (localId: string, patch: Partial<UploadedAssetItem>) => {
+    setItems((prev) =>
+      prev.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
+    )
+  }
+
+  const uploadFiles = async (files: File[]) => {
+    const nextCount = items.length + files.length
+
+    if (nextCount > MAX_PROPOSAL_FILES) {
+      throw new Error(`Можно загрузить не более ${MAX_PROPOSAL_FILES} файлов`)
+    }
+
+    for (const file of files) {
+      const validationError = validateProposalFileMeta({
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      })
+
+      if (validationError) {
+        throw new Error(`${file.name}: ${validationError}`)
+      }
+    }
+
+    const draftItems = files.map((file) => ({
+      localId: crypto.randomUUID(),
+      filename: file.name,
+      mimeType: file.type,
+      filesize: file.size,
+      progress: 0,
+      status: 'uploading' as const,
+    }))
+
+    setItems((prev) => [...prev, ...draftItems])
+
+    await Promise.all(
+      draftItems.map(async (draft, index) => {
+        const file = files[index]
+
+        try {
+          const presign = await requestUploadSlot(file)
+
+          patchItem(draft.localId, {
+            assetId: presign.asset.id,
+            token: presign.asset.token,
+            downloadUrl: presign.asset.downloadUrl,
+          })
+
+          await uploadFileWithProgress(presign.uploadUrl, file, (progress) => {
+            patchItem(draft.localId, { progress })
+          })
+
+          await completeUpload(presign.asset.id, presign.asset.token)
+
+          patchItem(draft.localId, {
+            status: 'uploaded',
+            progress: 100,
+          })
+        } catch (error) {
+          patchItem(draft.localId, {
+            status: 'error',
+            error:
+              error instanceof Error ? error.message : 'Не удалось загрузить файл',
+          })
+        }
+      }),
+    )
+  }
+
+  const removeItem = async (localId: string) => {
+    const current = items.find((item) => item.localId === localId)
+    if (!current) return
+
+    if (current.status !== 'uploading' && current.assetId && current.token) {
+      await deleteUploadedAsset(current.assetId, current.token)
+    }
+
+    setItems((prev) => prev.filter((item) => item.localId !== localId))
+  }
+
+  const uploadedAssetRefs: UploadedAssetRef[] = items
+    .filter(
+      (item) =>
+        item.status === 'uploaded' &&
+        item.assetId !== undefined &&
+        item.token,
+    )
+    .map((item) => ({
+      id: item.assetId!,
+      token: item.token!,
+    }))
+
+  const uploadingCount = items.filter((item) => item.status === 'uploading').length
+  const hasUploading = uploadingCount > 0
+  const hasFailedUploads = items.some((item) => item.status === 'error')
+
+  return {
+    items,
+    uploadFiles,
+    removeItem,
+    uploadedAssetRefs,
+    uploadingCount,
+    hasUploading,
+    hasFailedUploads,
+  }
 }
 
 function IntroView({
@@ -636,9 +989,18 @@ function ProposalWizard({
     complexityFlags: [],
     materials: [],
     referenceLinks: [],
-    uploadedFiles: [],
   })
   const [newReferenceLink, setNewReferenceLink] = useState('')
+
+  const {
+    items: uploadedItems,
+    uploadFiles,
+    removeItem,
+    uploadedAssetRefs,
+    uploadingCount,
+    hasUploading,
+    hasFailedUploads,
+  } = useProposalDirectUploads()
 
   const totalSteps = block.wizardStepLabels?.length || 7
   const referencesEnabled = (block.referenceLinksMode ?? 'enabled') === 'enabled'
@@ -682,25 +1044,28 @@ function ProposalWizard({
     }))
   }
 
-  const handleUploadFiles = (e: ChangeEvent<HTMLInputElement>) => {
-    const nextFiles = Array.from(e.target.files ?? [])
-    if (!nextFiles.length) return
+  const handleUploadFiles = async (files: File[]) => {
+    clearError()
 
-    const mergedFiles = [...data.uploadedFiles, ...nextFiles]
-    const filesResult = proposalFilesSchema.safeParse(mergedFiles)
-
-    if (!filesResult.success) {
-      setSubmitError(getFirstZodError(filesResult.error))
-      e.target.value = ''
-      return
+    try {
+      await uploadFiles(files)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Не удалось загрузить файлы',
+      )
     }
+  }
 
-    setSubmitError(null)
-    setData((prev) => ({
-      ...prev,
-      uploadedFiles: mergedFiles,
-    }))
-    e.target.value = ''
+  const handleRemoveUploadedItem = async (localId: string) => {
+    clearError()
+
+    try {
+      await removeItem(localId)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Не удалось удалить файл',
+      )
+    }
   }
 
   const handlePrev = () => {
@@ -719,6 +1084,16 @@ function ProposalWizard({
 
     if (stepError) {
       setSubmitError(stepError)
+      return
+    }
+
+    if (hasUploading) {
+      setSubmitError('Дождитесь завершения загрузки файлов')
+      return
+    }
+
+    if (hasFailedUploads) {
+      setSubmitError('Удалите файлы с ошибкой загрузки или попробуйте загрузить их заново')
       return
     }
 
@@ -743,6 +1118,7 @@ function ProposalWizard({
       complexityFlags: data.complexityFlags,
       materials: data.materials,
       referenceLinks: data.referenceLinks,
+      uploadedAssets: uploadedAssetRefs,
       timeline: data.timeline ?? '',
       budget: data.budget ?? '',
       briefNotes: '',
@@ -760,13 +1136,6 @@ function ProposalWizard({
 
     if (!parsed.success) {
       setSubmitError(getFirstZodError(parsed.error))
-      return
-    }
-
-    const filesResult = proposalFilesSchema.safeParse(data.uploadedFiles)
-
-    if (!filesResult.success) {
-      setSubmitError(getFirstZodError(filesResult.error))
       return
     }
 
@@ -789,10 +1158,11 @@ function ProposalWizard({
 
       appendString(formData, 'rolesCount', parsed.data.rolesCount)
       appendString(formData, 'screenCount', parsed.data.screenCount)
-      appendJsonArray(formData, 'complexityFlags', parsed.data.complexityFlags)
+      appendJson(formData, 'complexityFlags', parsed.data.complexityFlags)
 
-      appendJsonArray(formData, 'materials', parsed.data.materials)
-      appendJsonArray(formData, 'referenceLinks', parsed.data.referenceLinks)
+      appendJson(formData, 'materials', parsed.data.materials)
+      appendJson(formData, 'referenceLinks', parsed.data.referenceLinks)
+      appendJson(formData, 'uploadedAssets', parsed.data.uploadedAssets)
 
       appendString(formData, 'timeline', parsed.data.timeline)
       appendString(formData, 'budget', parsed.data.budget)
@@ -808,10 +1178,6 @@ function ProposalWizard({
       appendBoolean(formData, 'noCallFirst', parsed.data.noCallFirst)
       appendBoolean(formData, 'expertReview', parsed.data.expertReview)
       appendBoolean(formData, 'nda', parsed.data.nda)
-
-      data.uploadedFiles.forEach((file) => {
-        formData.append('files', file)
-      })
 
       const response = await fetch('/api/proposal-request', {
         method: 'POST',
@@ -1106,48 +1472,24 @@ function ProposalWizard({
                     )}
                   </div>
 
-                  <label className="block cursor-pointer">
-                    <input
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={handleUploadFiles}
-                    />
-
-                    <div className="rounded-sm border-2 border-dashed border-border p-8 text-center transition-colors hover:border-foreground/30">
-                      <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-                      <p className="mb-1 text-sm text-foreground">
-                        {getCopyValue(
-                          block.wizardCopy,
-                          'wizardUploadLabel',
-                          'Дополнительные файлы',
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {getCopyValue(block.wizardCopy, 'wizardUploadHint')}
-                      </p>
-                    </div>
-                  </label>
-
-                  {data.uploadedFiles.length ? (
-                    <div className="mt-4 space-y-2">
-                      {data.uploadedFiles.map((file, index) => (
-                        <UploadChip
-                          key={`${file.name}-${index}`}
-                          label={file.name}
-                          icon="file"
-                          rtl={rtl}
-                          onRemove={() => {
-                            clearError()
-                            setData((prev) => ({
-                              ...prev,
-                              uploadedFiles: prev.uploadedFiles.filter((_, i) => i !== index),
-                            }))
-                          }}
-                        />
-                      ))}
-                    </div>
-                  ) : null}
+                  <DirectUploadSection
+                    rtl={rtl}
+                    label={getCopyValue(
+                      block.wizardCopy,
+                      'wizardUploadLabel',
+                      'Дополнительные файлы',
+                    )}
+                    title={getCopyValue(
+                      block.wizardCopy,
+                      'wizardUploadLabel',
+                      'Дополнительные файлы',
+                    )}
+                    hint={getCopyValue(block.wizardCopy, 'wizardUploadHint')}
+                    items={uploadedItems}
+                    uploadingCount={uploadingCount}
+                    onFilesSelected={handleUploadFiles}
+                    onRemove={handleRemoveUploadedItem}
+                  />
 
                   {referencesEnabled ? (
                     <div className="mt-8 border-t border-border pt-6">
@@ -1193,14 +1535,28 @@ function ProposalWizard({
                       {data.referenceLinks.length ? (
                         <div className="mt-4 space-y-2">
                           {data.referenceLinks.map((reference, index) => (
-                            <UploadChip
+                            <div
                               key={`${reference}-${index}`}
-                              label={reference}
-                              icon="link"
-                              rtl={rtl}
-                              forceLTR={false}
-                              onRemove={() => removeReferenceLink(index)}
-                            />
+                              className={cn(
+                                'flex items-center justify-between rounded-sm bg-secondary/30 p-3',
+                                rtl && 'flex-row-reverse',
+                              )}
+                            >
+                              <div className={cn('flex items-center gap-3', rtl && 'flex-row-reverse')}>
+                                <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                                <span className="max-w-[420px] truncate text-sm text-foreground">
+                                  {reference}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => removeReferenceLink(index)}
+                                className="text-muted-foreground transition-colors hover:text-foreground"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
                           ))}
                         </div>
                       ) : null}
@@ -1596,7 +1952,6 @@ function UploadMaterialsView({
   onSuccess: () => void
 }) {
   const rtl = isRTL(locale)
-  const [files, setFiles] = useState<File[]>([])
   const [links, setLinks] = useState<string[]>([])
   const [newLink, setNewLink] = useState('')
   const [name, setName] = useState('')
@@ -1604,6 +1959,16 @@ function UploadMaterialsView({
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const {
+    items: uploadedItems,
+    uploadFiles,
+    removeItem,
+    uploadedAssetRefs,
+    uploadingCount,
+    hasUploading,
+    hasFailedUploads,
+  } = useProposalDirectUploads()
 
   const clearError = () => setSubmitError(null)
 
@@ -1620,25 +1985,41 @@ function UploadMaterialsView({
     setLinks((prev) => prev.filter((_, i) => i !== index))
   }
 
-  const handleUploadFiles = (e: ChangeEvent<HTMLInputElement>) => {
-    const nextFiles = Array.from(e.target.files ?? [])
-    if (!nextFiles.length) return
+  const handleUploadFiles = async (files: File[]) => {
+    clearError()
 
-    const mergedFiles = [...files, ...nextFiles]
-    const result = proposalFilesSchema.safeParse(mergedFiles)
-
-    if (!result.success) {
-      setSubmitError(getFirstZodError(result.error))
-      e.target.value = ''
-      return
+    try {
+      await uploadFiles(files)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Не удалось загрузить файлы',
+      )
     }
+  }
 
-    setSubmitError(null)
-    setFiles(mergedFiles)
-    e.target.value = ''
+  const handleRemoveUploadedItem = async (localId: string) => {
+    clearError()
+
+    try {
+      await removeItem(localId)
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Не удалось удалить файл',
+      )
+    }
   }
 
   const handleSubmit = async () => {
+    if (hasUploading) {
+      setSubmitError('Дождитесь завершения загрузки файлов')
+      return
+    }
+
+    if (hasFailedUploads) {
+      setSubmitError('Удалите файлы с ошибкой загрузки или попробуйте загрузить их заново')
+      return
+    }
+
     const parsed = proposalUploadSchema.safeParse({
       mode: 'upload',
       locale,
@@ -1646,17 +2027,11 @@ function UploadMaterialsView({
       email,
       description,
       links,
+      uploadedAssets: uploadedAssetRefs,
     })
 
     if (!parsed.success) {
       setSubmitError(getFirstZodError(parsed.error))
-      return
-    }
-
-    const filesResult = proposalFilesSchema.safeParse(files)
-
-    if (!filesResult.success) {
-      setSubmitError(getFirstZodError(filesResult.error))
       return
     }
 
@@ -1671,11 +2046,8 @@ function UploadMaterialsView({
       appendString(formData, 'name', parsed.data.name)
       appendString(formData, 'email', parsed.data.email)
       appendString(formData, 'description', parsed.data.description)
-      appendJsonArray(formData, 'links', parsed.data.links)
-
-      files.forEach((file) => {
-        formData.append('files', file)
-      })
+      appendJson(formData, 'links', parsed.data.links)
+      appendJson(formData, 'uploadedAssets', parsed.data.uploadedAssets)
 
       const response = await fetch('/api/proposal-request', {
         method: 'POST',
@@ -1724,41 +2096,16 @@ function UploadMaterialsView({
           </div>
 
           <div className="space-y-8 p-8">
-            <div>
-              <label className="mb-3 block text-xs uppercase tracking-wider text-muted-foreground">
-                {getCopyValue(block.uploadCopy, 'filesLabel')}
-              </label>
-
-              <label className="block cursor-pointer">
-                <input type="file" multiple className="hidden" onChange={handleUploadFiles} />
-                <div className="rounded-sm border-2 border-dashed border-border p-10 text-center transition-colors hover:border-foreground/30">
-                  <Upload className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-                  <p className="mb-2 text-foreground">
-                    {getCopyValue(block.uploadCopy, 'filesTitle')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {getCopyValue(block.uploadCopy, 'filesHint')}
-                  </p>
-                </div>
-              </label>
-
-              {files.length ? (
-                <div className="mt-4 space-y-2">
-                  {files.map((file, index) => (
-                    <UploadChip
-                      key={`${file.name}-${index}`}
-                      label={file.name}
-                      icon="file"
-                      rtl={rtl}
-                      onRemove={() => {
-                        clearError()
-                        setFiles((prev) => prev.filter((_, i) => i !== index))
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <DirectUploadSection
+              rtl={rtl}
+              label={getCopyValue(block.uploadCopy, 'filesLabel')}
+              title={getCopyValue(block.uploadCopy, 'filesTitle')}
+              hint={getCopyValue(block.uploadCopy, 'filesHint')}
+              items={uploadedItems}
+              uploadingCount={uploadingCount}
+              onFilesSelected={handleUploadFiles}
+              onRemove={handleRemoveUploadedItem}
+            />
 
             <div>
               <label className="mb-3 block text-xs uppercase tracking-wider text-muted-foreground">
@@ -1785,13 +2132,31 @@ function UploadMaterialsView({
               {links.length ? (
                 <div className="mt-4 space-y-2">
                   {links.map((link, index) => (
-                    <UploadChip
+                    <div
                       key={`${link}-${index}`}
-                      label={link}
-                      icon="link"
-                      rtl={rtl}
-                      onRemove={() => removeLink(index)}
-                    />
+                      className={cn(
+                        'flex items-center justify-between rounded-sm bg-secondary/30 p-3',
+                        rtl && 'flex-row-reverse',
+                      )}
+                    >
+                      <div className={cn('flex items-center gap-3', rtl && 'flex-row-reverse')}>
+                        <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                        <span
+                          className="max-w-[420px] truncate text-sm text-foreground"
+                          dir="ltr"
+                        >
+                          {link}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeLink(index)}
+                        className="text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               ) : null}

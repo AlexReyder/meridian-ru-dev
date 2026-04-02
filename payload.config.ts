@@ -16,6 +16,7 @@ import { Footer } from './globals/Footer'
 import { Header } from './globals/Header'
 import { ProposalFiles } from './collections/ProposalFiles'
 import { ProposalRequests } from './collections/ProposalRequest'
+import { ProposalUploadAssets } from './collections/ProposalUploadAssets'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -24,11 +25,11 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     importMap: {
-       baseDir: path.resolve(dirname), 
-      importMapFile: './app/(payload)/importMap.ts', 
+      baseDir: path.resolve(dirname),
+      importMapFile: './app/(payload)/importMap.ts',
     },
   },
-    email: nodemailerAdapter({
+  email: nodemailerAdapter({
     defaultFromAddress: process.env.SMTP_USER as string,
     defaultFromName: 'Atelier Meridian',
     transportOptions: {
@@ -41,7 +42,14 @@ export default buildConfig({
     },
   }),
   editor: lexicalEditor(),
-  collections: [Users, Media, Pages, ProposalFiles, ProposalRequests],
+  collections: [
+    Users,
+    Media,
+    Pages,
+    ProposalFiles,
+    ProposalUploadAssets,
+    ProposalRequests,
+  ],
   globals: [Header, Footer],
   localization: {
     locales: ['ru'],
@@ -52,16 +60,16 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URL || '',
     },
-     push: true,
+    push: true,
   }),
   plugins: [
-     s3Storage({
+    s3Storage({
       collections: {
         'proposal-files': true,
-          media: {
-      generateFileURL: ({ filename }) =>
-        `${process.env.S3_PUBLIC_BASE_URL}/${filename}`,
-    },
+        media: {
+          generateFileURL: ({ filename }) =>
+            `${process.env.S3_PUBLIC_BASE_URL}/${filename}`,
+        },
       },
       bucket: process.env.S3_BUCKET || '',
       config: {
@@ -80,4 +88,3 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
 })
-

@@ -4,10 +4,23 @@ import config from '@payload-config'
 
 import {
   getFirstZodError,
-  proposalFilesSchema,
   proposalUploadSchema,
   proposalWizardSchema,
 } from '@/lib/validation/proposal-request'
+
+type UploadedAssetRef = {
+  id: string | number
+  token: string
+}
+
+type UploadedAssetDoc = {
+  id: string | number
+  filename: string
+  downloadUrl: string
+  uploadToken: string
+  status: string
+  request?: string | number | null
+}
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -18,58 +31,62 @@ function getBoolean(formData: FormData, key: string) {
   return getString(formData, key) === 'true'
 }
 
-function getJsonStringArray(formData: FormData, key: string): string[] {
+function getJsonValue(formData: FormData, key: string): unknown {
   const value = formData.get(key)
 
-  if (typeof value !== 'string' || !value.trim()) return []
+  if (typeof value !== 'string' || !value.trim()) return undefined
 
   try {
-    const parsed = JSON.parse(value)
-    return Array.isArray(parsed)
-      ? parsed.filter((item): item is string => typeof item === 'string')
-      : []
+    return JSON.parse(value)
   } catch {
-    return []
+    return undefined
   }
 }
 
-function getFiles(formData: FormData, key: string): File[] {
-  return formData
-    .getAll(key)
-    .filter(
-      (item): item is File =>
-        typeof File !== 'undefined' && item instanceof File,
+function getJsonStringArray(formData: FormData, key: string): string[] {
+  const parsed = getJsonValue(formData, key)
+
+  return Array.isArray(parsed)
+    ? parsed.filter((item): item is string => typeof item === 'string')
+    : []
+}
+
+function getUploadedAssetRefs(formData: FormData, key: string): UploadedAssetRef[] {
+  const parsed = getJsonValue(formData, key)
+
+  if (!Array.isArray(parsed)) return []
+
+  return parsed.filter((item): item is UploadedAssetRef => {
+    if (!item || typeof item !== 'object') return false
+
+    const maybeId = (item as Record<string, unknown>).id
+    const maybeToken = (item as Record<string, unknown>).token
+
+    return (
+      (typeof maybeId === 'string' || typeof maybeId === 'number') &&
+      typeof maybeToken === 'string' &&
+      maybeToken.length > 0
     )
-    .filter((file) => file.size > 0)
+  })
 }
 
-type PayloadUploadFile = {
-  data: Buffer
-  mimetype: string
-  name: string
-  size: number
-}
-
-type EmailAttachment = {
-  filename: string
-  content: Buffer
-  contentType: string
-}
-
-async function toPayloadUploadFile(file: File): Promise<PayloadUploadFile> {
-  const arrayBuffer = await file.arrayBuffer()
-
-  return {
-    data: Buffer.from(arrayBuffer),
-    mimetype: file.type || 'application/octet-stream',
-    name: file.name,
-    size: file.size,
+function buildUploadedAssetsEmailLines(
+  uploadedAssets: Array<{ filename: string; downloadUrl: string }>,
+) {
+  if (!uploadedAssets.length) {
+    return ['—']
   }
+
+  return uploadedAssets.flatMap((asset, index) => [
+    `${index + 1}. ${asset.filename}`,
+    asset.downloadUrl,
+  ])
 }
 
 function buildWizardEmailText(
   requestId: string | number,
   data: Record<string, unknown>,
+  uploadedAssets: Array<{ filename: string; downloadUrl: string }>,
 ) {
   const referenceLinks =
     Array.isArray(data.referenceLinks) && data.referenceLinks.length
@@ -111,6 +128,9 @@ function buildWizardEmailText(
     'Референсы:',
     ...referenceLinks,
     '',
+    'Файлы:',
+    ...buildUploadedAssetsEmailLines(uploadedAssets),
+    '',
     `Комментарий к brief: ${String(data.briefNotes ?? '')}`,
     `Дополнительный комментарий: ${String(data.comment ?? '')}`,
     '',
@@ -128,8 +148,8 @@ function buildUploadEmailText(
     email: string
     description: string
     links: string[]
-    files: Array<{ filename?: string | null; url?: string | null }>
   },
+  uploadedAssets: Array<{ filename: string; downloadUrl: string }>,
 ) {
   return [
     'Новая загрузка материалов',
@@ -147,7 +167,52 @@ function buildUploadEmailText(
     'Ссылки:',
     ...(data.links.length ? data.links : ['—']),
     '',
+    'Файлы:',
+    ...buildUploadedAssetsEmailLines(uploadedAssets),
+    '',
   ].join('\n')
+}
+
+async function resolveUploadedAssets(
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  refs: UploadedAssetRef[],
+): Promise<UploadedAssetDoc[]> {
+  const docs = await Promise.all(
+    refs.map(async (ref) => {
+      const doc = await payload.findByID({
+        collection: 'proposal-upload-assets',
+        id: ref.id,
+        overrideAccess: true,
+      })
+
+      if (!doc) {
+        throw new Error('Один из файлов не найден')
+      }
+
+      if (doc.uploadToken !== ref.token) {
+        throw new Error('Некорректный токен одного из файлов')
+      }
+
+      if (doc.request) {
+        throw new Error('Один из файлов уже привязан к другой заявке')
+      }
+
+      if (doc.status !== 'uploaded' && doc.status !== 'attached') {
+        throw new Error('Один из файлов ещё не завершил загрузку')
+      }
+
+      return {
+        id: doc.id,
+        filename: doc.filename,
+        downloadUrl: doc.downloadUrl,
+        uploadToken: doc.uploadToken,
+        status: doc.status,
+        request: doc.request,
+      }
+    }),
+  )
+
+  return docs
 }
 
 export async function POST(req: Request) {
@@ -156,18 +221,8 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const mode = getString(formData, 'mode')
 
-    const files = getFiles(formData, 'files')
-    const filesValidation = proposalFilesSchema.safeParse(files)
-
-    if (!filesValidation.success) {
-      return NextResponse.json(
-        { ok: false, error: getFirstZodError(filesValidation.error) },
-        { status: 400 },
-      )
-    }
-
     if (mode === 'wizard') {
-      const referenceLinks = getJsonStringArray(formData, 'referenceLinks')
+      const uploadedAssets = getUploadedAssetRefs(formData, 'uploadedAssets')
 
       const parsed = proposalWizardSchema.safeParse({
         mode: 'wizard',
@@ -185,7 +240,8 @@ export async function POST(req: Request) {
 
         complexityFlags: getJsonStringArray(formData, 'complexityFlags'),
         materials: getJsonStringArray(formData, 'materials'),
-        referenceLinks,
+        referenceLinks: getJsonStringArray(formData, 'referenceLinks'),
+        uploadedAssets,
 
         timeline: getString(formData, 'timeline'),
         budget: getString(formData, 'budget'),
@@ -211,8 +267,26 @@ export async function POST(req: Request) {
         )
       }
 
+      let uploadedAssetDocs: UploadedAssetDoc[] = []
+
+      try {
+        uploadedAssetDocs = await resolveUploadedAssets(payload, parsed.data.uploadedAssets)
+      } catch (assetError) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              assetError instanceof Error
+                ? assetError.message
+                : 'Не удалось проверить загруженные файлы',
+          },
+          { status: 400 },
+        )
+      }
+
       const requestDoc = await payload.create({
         collection: 'proposal-requests',
+        overrideAccess: true,
         data: {
           mode: 'wizard',
           locale: parsed.data.locale,
@@ -224,46 +298,26 @@ export async function POST(req: Request) {
           phone: parsed.data.phone,
           payload: parsed.data,
           links: parsed.data.referenceLinks.map((value) => ({ url: value })),
+          uploadedAssets: uploadedAssetDocs.map((asset) => asset.id),
           files: [],
         },
       })
 
       after(async () => {
         try {
-          const uploadedFileDocs = []
-          const emailAttachments: EmailAttachment[] = []
-
-          for (const file of files) {
-            const payloadFile = await toPayloadUploadFile(file)
-
-            emailAttachments.push({
-              filename: payloadFile.name,
-              content: payloadFile.data,
-              contentType: payloadFile.mimetype,
-            })
-
-            const fileDoc = await payload.create({
-              collection: 'proposal-files',
-              data: {
-                alt: file.name,
-                sourceType: 'proposal-upload',
-                request: requestDoc.id,
-              },
-              file: payloadFile,
-            })
-
-            uploadedFileDocs.push(fileDoc)
-          }
-
-          if (uploadedFileDocs.length) {
-            await payload.update({
-              collection: 'proposal-requests',
-              id: requestDoc.id,
-              data: {
-                files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
-              },
-            })
-          }
+          await Promise.all(
+            uploadedAssetDocs.map((asset) =>
+              payload.update({
+                collection: 'proposal-upload-assets',
+                id: asset.id,
+                overrideAccess: true,
+                data: {
+                  request: requestDoc.id,
+                  status: 'attached',
+                },
+              }),
+            ),
+          )
 
           try {
             await payload.sendEmail({
@@ -272,14 +326,13 @@ export async function POST(req: Request) {
                 process.env.SMTP_USER ||
                 'mail@anx-studio.ru',
               subject: `[Новая заявка][Бриф][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
-              text: buildWizardEmailText(requestDoc.id, parsed.data),
-              attachments: emailAttachments,
+              text: buildWizardEmailText(requestDoc.id, parsed.data, uploadedAssetDocs),
             })
           } catch (emailError) {
-            console.error('Произошла ошибка при отправке брифа:', emailError)
+            console.error('Proposal wizard email error:', emailError)
           }
         } catch (backgroundError) {
-          console.error('Произошлка ошибка при отпрвке брифа - фоновый процесс:', backgroundError)
+          console.error('Proposal wizard background processing error:', backgroundError)
         }
       })
 
@@ -290,7 +343,7 @@ export async function POST(req: Request) {
     }
 
     if (mode === 'upload') {
-      const links = getJsonStringArray(formData, 'links')
+      const uploadedAssets = getUploadedAssetRefs(formData, 'uploadedAssets')
 
       const parsed = proposalUploadSchema.safeParse({
         mode: 'upload',
@@ -298,7 +351,8 @@ export async function POST(req: Request) {
         name: getString(formData, 'name'),
         email: getString(formData, 'email'),
         description: getString(formData, 'description'),
-        links,
+        links: getJsonStringArray(formData, 'links'),
+        uploadedAssets,
       })
 
       if (!parsed.success) {
@@ -308,8 +362,26 @@ export async function POST(req: Request) {
         )
       }
 
+      let uploadedAssetDocs: UploadedAssetDoc[] = []
+
+      try {
+        uploadedAssetDocs = await resolveUploadedAssets(payload, parsed.data.uploadedAssets)
+      } catch (assetError) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              assetError instanceof Error
+                ? assetError.message
+                : 'Не удалось проверить загруженные файлы',
+          },
+          { status: 400 },
+        )
+      }
+
       const requestDoc = await payload.create({
         collection: 'proposal-requests',
+        overrideAccess: true,
         data: {
           mode: 'upload',
           locale: parsed.data.locale,
@@ -319,46 +391,26 @@ export async function POST(req: Request) {
             description: parsed.data.description,
           },
           links: parsed.data.links.map((url) => ({ url })),
+          uploadedAssets: uploadedAssetDocs.map((asset) => asset.id),
           files: [],
         },
       })
 
       after(async () => {
         try {
-          const uploadedFileDocs = []
-          const emailAttachments: EmailAttachment[] = []
-
-          for (const file of files) {
-            const payloadFile = await toPayloadUploadFile(file)
-
-            emailAttachments.push({
-              filename: payloadFile.name,
-              content: payloadFile.data,
-              contentType: payloadFile.mimetype,
-            })
-
-            const fileDoc = await payload.create({
-              collection: 'proposal-files',
-              data: {
-                alt: file.name,
-                sourceType: 'proposal-upload',
-                request: requestDoc.id,
-              },
-              file: payloadFile,
-            })
-
-            uploadedFileDocs.push(fileDoc)
-          }
-
-          if (uploadedFileDocs.length) {
-            await payload.update({
-              collection: 'proposal-requests',
-              id: requestDoc.id,
-              data: {
-                files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
-              },
-            })
-          }
+          await Promise.all(
+            uploadedAssetDocs.map((asset) =>
+              payload.update({
+                collection: 'proposal-upload-assets',
+                id: asset.id,
+                overrideAccess: true,
+                data: {
+                  request: requestDoc.id,
+                  status: 'attached',
+                },
+              }),
+            ),
+          )
 
           try {
             await payload.sendEmail({
@@ -367,24 +419,23 @@ export async function POST(req: Request) {
                 process.env.SMTP_USER ||
                 'mail@anx-studio.ru',
               subject: `[Новая заявка][Материалы][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
-              text: buildUploadEmailText(requestDoc.id, {
-                locale: parsed.data.locale,
-                name: parsed.data.name,
-                email: parsed.data.email,
-                description: parsed.data.description,
-                links: parsed.data.links,
-                files: uploadedFileDocs.map((fileDoc) => ({
-                  filename: fileDoc.filename,
-                  url: fileDoc.url,
-                })),
-              }),
-              attachments: emailAttachments,
+              text: buildUploadEmailText(
+                requestDoc.id,
+                {
+                  locale: parsed.data.locale,
+                  name: parsed.data.name,
+                  email: parsed.data.email,
+                  description: parsed.data.description,
+                  links: parsed.data.links,
+                },
+                uploadedAssetDocs,
+              ),
             })
           } catch (emailError) {
-            console.error('Произошла ошибка в материалах', emailError)
+            console.error('Proposal upload email error:', emailError)
           }
         } catch (backgroundError) {
-          console.error('Произошла ошибка в материалах - фоновый процесс:', backgroundError)
+          console.error('Proposal upload background processing error:', backgroundError)
         }
       })
 
