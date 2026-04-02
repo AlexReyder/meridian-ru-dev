@@ -156,6 +156,8 @@ export const ProposalFlowProposalBlock: Block = {
       { key: 'materialsDescription', value: 'Это поможет понять, с чего начать работу' },
       { key: 'wizardUploadLabel', value: 'Дополнительные файлы' },
       { key: 'wizardUploadHint', value: 'PDF, PNG, JPG, DOCX, ZIP — до 50 MB на файл' },
+      { key: 'referenceLinksLabel', value: 'Укажите ссылки на референсы' },
+      { key: 'referenceLinksPlaceholder', value: 'что Вам нравится в качестве примера' },
 
       { key: 'timelineTitle', value: 'Какие ожидания по срокам и бюджету?' },
       { key: 'timelineDescription', value: 'Это поможет подобрать оптимальный формат работы' },
@@ -244,6 +246,26 @@ export const ProposalFlowProposalBlock: Block = {
       required: true,
       minRows: 1,
       fields: textOptionFields,
+    },
+    {
+      name: 'referenceLinksMode',
+      type: 'radio',
+      required: true,
+      dbName: 'pfp_refs_mode',
+      defaultValue: 'enabled',
+      admin: {
+        layout: 'horizontal',
+      },
+      options: [
+        {
+          label: 'Включить ссылки на референсы',
+          value: 'enabled',
+        },
+        {
+          label: 'Выключить ссылки на референсы',
+          value: 'disabled',
+        },
+      ],
     },
     {
       name: 'timelineOptions',

@@ -9,7 +9,6 @@ import {
   proposalWizardSchema,
 } from '@/lib/validation/proposal-request'
 
-
 function getString(formData: FormData, key: string) {
   const value = formData.get(key)
   return typeof value === 'string' ? value : ''
@@ -72,6 +71,11 @@ function buildWizardEmailText(
   requestId: string | number,
   data: Record<string, unknown>,
 ) {
+  const referenceLinks =
+    Array.isArray(data.referenceLinks) && data.referenceLinks.length
+      ? data.referenceLinks.map((item) => `- ${String(item)}`)
+      : ['—']
+
   return [
     'Новая заявка на предложение',
     `ID заявки: ${requestId}`,
@@ -103,6 +107,9 @@ function buildWizardEmailText(
     `Материалы: ${
       Array.isArray(data.materials) ? data.materials.join(', ') : ''
     }`,
+    '',
+    'Референсы:',
+    ...referenceLinks,
     '',
     `Комментарий к brief: ${String(data.briefNotes ?? '')}`,
     `Дополнительный комментарий: ${String(data.comment ?? '')}`,
@@ -160,6 +167,8 @@ export async function POST(req: Request) {
     }
 
     if (mode === 'wizard') {
+      const referenceLinks = getJsonStringArray(formData, 'referenceLinks')
+
       const parsed = proposalWizardSchema.safeParse({
         mode: 'wizard',
         locale: getString(formData, 'locale'),
@@ -176,6 +185,7 @@ export async function POST(req: Request) {
 
         complexityFlags: getJsonStringArray(formData, 'complexityFlags'),
         materials: getJsonStringArray(formData, 'materials'),
+        referenceLinks,
 
         timeline: getString(formData, 'timeline'),
         budget: getString(formData, 'budget'),
@@ -213,66 +223,65 @@ export async function POST(req: Request) {
           region: parsed.data.region,
           phone: parsed.data.phone,
           payload: parsed.data,
-          links: [],
+          links: parsed.data.referenceLinks.map((value) => ({ url: value })),
           files: [],
         },
       })
 
-   after(async () => {
-    try{
+      after(async () => {
+        try {
+          const uploadedFileDocs = []
+          const emailAttachments: EmailAttachment[] = []
 
-      const uploadedFileDocs = []
-      const emailAttachments: EmailAttachment[] = []
+          for (const file of files) {
+            const payloadFile = await toPayloadUploadFile(file)
 
-      for (const file of files) {
-        const payloadFile = await toPayloadUploadFile(file)
+            emailAttachments.push({
+              filename: payloadFile.name,
+              content: payloadFile.data,
+              contentType: payloadFile.mimetype,
+            })
 
-        emailAttachments.push({
-          filename: payloadFile.name,
-          content: payloadFile.data,
-          contentType: payloadFile.mimetype,
-        })
+            const fileDoc = await payload.create({
+              collection: 'proposal-files',
+              data: {
+                alt: file.name,
+                sourceType: 'proposal-upload',
+                request: requestDoc.id,
+              },
+              file: payloadFile,
+            })
 
-        const fileDoc = await payload.create({
-          collection: 'proposal-files',
-          data: {
-            alt: file.name,
-            sourceType: 'proposal-upload',
-            request: requestDoc.id,
-          },
-          file: payloadFile,
-        })
+            uploadedFileDocs.push(fileDoc)
+          }
 
-        uploadedFileDocs.push(fileDoc)
-      }
+          if (uploadedFileDocs.length) {
+            await payload.update({
+              collection: 'proposal-requests',
+              id: requestDoc.id,
+              data: {
+                files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
+              },
+            })
+          }
 
-      if (uploadedFileDocs.length) {
-        await payload.update({
-          collection: 'proposal-requests',
-          id: requestDoc.id,
-          data: {
-            files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
-          },
-        })
-      }
-
-      try {
-        await payload.sendEmail({
-          to:
-            process.env.PROPOSAL_NOTIFICATION_EMAIL ||
-            process.env.SMTP_USER ||
-            'hello@atelier-meridian.com',
-          subject: `[Proposal][Wizard][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
-          text: buildWizardEmailText(requestDoc.id, parsed.data),
-          attachments: emailAttachments,
-        })
-      } catch (emailError) {
-        console.error('Proposal wizard email error:', emailError)
-      }
-    } catch(backgroundError){
-        console.error('Proposal wizard background processing error:', backgroundError)
-    }
-  })
+          try {
+            await payload.sendEmail({
+              to:
+                process.env.PROPOSAL_NOTIFICATION_EMAIL ||
+                process.env.SMTP_USER ||
+                'mail@anx-studio.ru',
+              subject: `[Новая заявка][Бриф][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
+              text: buildWizardEmailText(requestDoc.id, parsed.data),
+              attachments: emailAttachments,
+            })
+          } catch (emailError) {
+            console.error('Произошла ошибка при отправке брифа:', emailError)
+          }
+        } catch (backgroundError) {
+          console.error('Произошлка ошибка при отпрвке брифа - фоновый процесс:', backgroundError)
+        }
+      })
 
       return NextResponse.json({
         ok: true,
@@ -316,66 +325,66 @@ export async function POST(req: Request) {
 
       after(async () => {
         try {
-      const uploadedFileDocs = []
-      const emailAttachments: EmailAttachment[] = []
+          const uploadedFileDocs = []
+          const emailAttachments: EmailAttachment[] = []
 
-      for (const file of files) {
-        const payloadFile = await toPayloadUploadFile(file)
+          for (const file of files) {
+            const payloadFile = await toPayloadUploadFile(file)
 
-        emailAttachments.push({
-          filename: payloadFile.name,
-          content: payloadFile.data,
-          contentType: payloadFile.mimetype,
-        })
+            emailAttachments.push({
+              filename: payloadFile.name,
+              content: payloadFile.data,
+              contentType: payloadFile.mimetype,
+            })
 
-        const fileDoc = await payload.create({
-          collection: 'proposal-files',
-          data: {
-            alt: file.name,
-            sourceType: 'proposal-upload',
-            request: requestDoc.id,
-          },
-          file: payloadFile,
-        })
+            const fileDoc = await payload.create({
+              collection: 'proposal-files',
+              data: {
+                alt: file.name,
+                sourceType: 'proposal-upload',
+                request: requestDoc.id,
+              },
+              file: payloadFile,
+            })
 
-        uploadedFileDocs.push(fileDoc)
-      }
+            uploadedFileDocs.push(fileDoc)
+          }
 
-      if (uploadedFileDocs.length) {
-        await payload.update({
-          collection: 'proposal-requests',
-          id: requestDoc.id,
-          data: {
-            files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
-          },
-        })
-      }
+          if (uploadedFileDocs.length) {
+            await payload.update({
+              collection: 'proposal-requests',
+              id: requestDoc.id,
+              data: {
+                files: uploadedFileDocs.map((fileDoc) => fileDoc.id),
+              },
+            })
+          }
 
-      try {
-        await payload.sendEmail({
-          to:
-            process.env.PROPOSAL_NOTIFICATION_EMAIL ||
-            process.env.SMTP_USER ||
-            'hello@atelier-meridian.com',
-          subject: `[Proposal][Upload][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
-          text: buildUploadEmailText(requestDoc.id, {
-            locale: parsed.data.locale,
-            name: parsed.data.name,
-            email: parsed.data.email,
-            description: parsed.data.description,
-            links: parsed.data.links,
-            files: uploadedFileDocs.map((fileDoc) => ({
-              filename: fileDoc.filename,
-              url: fileDoc.url,
-            })),
-          }),
-          attachments: emailAttachments,
-        })
-      } catch (emailError) {
-        console.error('Proposal upload email error:', emailError)
-      }
-    } catch (backgroundError) {
-          console.error('Proposal upload background processing error:', backgroundError)
+          try {
+            await payload.sendEmail({
+              to:
+                process.env.PROPOSAL_NOTIFICATION_EMAIL ||
+                process.env.SMTP_USER ||
+                'mail@anx-studio.ru',
+              subject: `[Новая заявка][Материалы][${parsed.data.locale.toUpperCase()}] ${parsed.data.name}`,
+              text: buildUploadEmailText(requestDoc.id, {
+                locale: parsed.data.locale,
+                name: parsed.data.name,
+                email: parsed.data.email,
+                description: parsed.data.description,
+                links: parsed.data.links,
+                files: uploadedFileDocs.map((fileDoc) => ({
+                  filename: fileDoc.filename,
+                  url: fileDoc.url,
+                })),
+              }),
+              attachments: emailAttachments,
+            })
+          } catch (emailError) {
+            console.error('Произошла ошибка в материалах', emailError)
+          }
+        } catch (backgroundError) {
+          console.error('Произошла ошибка в материалах - фоновый процесс:', backgroundError)
         }
       })
 

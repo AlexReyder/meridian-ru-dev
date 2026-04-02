@@ -92,6 +92,15 @@ export const proposalWizardSchema = z.object({
 
   complexityFlags: z.array(z.string()).default([]),
   materials: z.array(z.string()).default([]),
+  referenceLinks: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, 'Поле с референсом не должно быть пустым')
+        .max(500, 'Референс слишком длинный'),
+    )
+    .default([]),
 
   timeline: z.string().optional(),
   budget: z.string().optional(),

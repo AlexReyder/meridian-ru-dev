@@ -13,6 +13,7 @@ import {
   Home,
   Layers,
   Link as LinkIcon,
+  Plus,
   Target,
   Upload,
   Users,
@@ -74,6 +75,7 @@ type ProposalFlowProposalBlockData = {
 
   wizardCopy?: CopyItem[] | null
   wizardStepLabels?: { value?: string | null }[] | null
+  referenceLinksMode?: 'enabled' | 'disabled' | null
 
   projectTypes?: TextOptionWithDescription[] | null
   projectGoals?: TextOption[] | null
@@ -114,6 +116,7 @@ type WizardData = {
   complexityFlags: string[]
 
   materials: string[]
+  referenceLinks: string[]
   uploadedFiles: File[]
 
   timeline?: string
@@ -251,11 +254,13 @@ function UploadChip({
   icon,
   rtl,
   onRemove,
+  forceLTR = icon === 'link',
 }: {
   label: string
   icon: 'file' | 'link'
   rtl: boolean
   onRemove: () => void
+  forceLTR?: boolean
 }) {
   return (
     <div
@@ -273,7 +278,7 @@ function UploadChip({
 
         <span
           className="max-w-[420px] truncate text-sm text-foreground"
-          dir={icon === 'link' ? 'ltr' : undefined}
+          dir={forceLTR ? 'ltr' : undefined}
         >
           {label}
         </span>
@@ -630,10 +635,13 @@ function ProposalWizard({
   const [data, setData] = useState<WizardData>({
     complexityFlags: [],
     materials: [],
+    referenceLinks: [],
     uploadedFiles: [],
   })
+  const [newReferenceLink, setNewReferenceLink] = useState('')
 
   const totalSteps = block.wizardStepLabels?.length || 7
+  const referencesEnabled = (block.referenceLinksMode ?? 'enabled') === 'enabled'
 
   const showNoCall = Boolean(getCopyValue(block.wizardCopy, 'noCallLabel'))
   const showExpert = Boolean(getCopyValue(block.wizardCopy, 'expertReviewLabel'))
@@ -652,6 +660,26 @@ function ProposalWizard({
           : [...current, value],
       }
     })
+  }
+
+  const addReferenceLink = () => {
+    const candidate = newReferenceLink.trim()
+    if (!candidate) return
+
+    clearError()
+    setData((prev) => ({
+      ...prev,
+      referenceLinks: [...prev.referenceLinks, candidate],
+    }))
+    setNewReferenceLink('')
+  }
+
+  const removeReferenceLink = (index: number) => {
+    clearError()
+    setData((prev) => ({
+      ...prev,
+      referenceLinks: prev.referenceLinks.filter((_, i) => i !== index),
+    }))
   }
 
   const handleUploadFiles = (e: ChangeEvent<HTMLInputElement>) => {
@@ -714,6 +742,7 @@ function ProposalWizard({
       screenCount: data.screenCount ?? '',
       complexityFlags: data.complexityFlags,
       materials: data.materials,
+      referenceLinks: data.referenceLinks,
       timeline: data.timeline ?? '',
       budget: data.budget ?? '',
       briefNotes: '',
@@ -763,6 +792,7 @@ function ProposalWizard({
       appendJsonArray(formData, 'complexityFlags', parsed.data.complexityFlags)
 
       appendJsonArray(formData, 'materials', parsed.data.materials)
+      appendJsonArray(formData, 'referenceLinks', parsed.data.referenceLinks)
 
       appendString(formData, 'timeline', parsed.data.timeline)
       appendString(formData, 'budget', parsed.data.budget)
@@ -1087,7 +1117,11 @@ function ProposalWizard({
                     <div className="rounded-sm border-2 border-dashed border-border p-8 text-center transition-colors hover:border-foreground/30">
                       <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
                       <p className="mb-1 text-sm text-foreground">
-                        {getCopyValue(block.wizardCopy, 'wizardUploadTitle')}
+                        {getCopyValue(
+                          block.wizardCopy,
+                          'wizardUploadLabel',
+                          'Дополнительные файлы',
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {getCopyValue(block.wizardCopy, 'wizardUploadHint')}
@@ -1112,6 +1146,64 @@ function ProposalWizard({
                           }}
                         />
                       ))}
+                    </div>
+                  ) : null}
+
+                  {referencesEnabled ? (
+                    <div className="mt-8 border-t border-border pt-6">
+                      <label className="mb-3 block text-xs uppercase tracking-wider text-muted-foreground">
+                        {getCopyValue(
+                          block.wizardCopy,
+                          'referenceLinksLabel',
+                          'Укажите ссылки на референсы',
+                        )}
+                      </label>
+
+                      <div className={cn('flex gap-3', rtl && 'flex-row-reverse')}>
+                        <Input
+                          value={newReferenceLink}
+                          onChange={(e) => {
+                            clearError()
+                            setNewReferenceLink(e.target.value)
+                          }}
+                          placeholder={getCopyValue(
+                            block.wizardCopy,
+                            'referenceLinksPlaceholder',
+                            'что Вам нравится в качестве примера',
+                          )}
+                          className={cn('h-10 flex-1', rtl && 'text-right')}
+                          dir={rtl ? 'rtl' : 'ltr'}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              addReferenceLink()
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          onClick={addReferenceLink}
+                          variant="outline"
+                          className="h-10 px-4"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {data.referenceLinks.length ? (
+                        <div className="mt-4 space-y-2">
+                          {data.referenceLinks.map((reference, index) => (
+                            <UploadChip
+                              key={`${reference}-${index}`}
+                              label={reference}
+                              icon="link"
+                              rtl={rtl}
+                              forceLTR={false}
+                              onRemove={() => removeReferenceLink(index)}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

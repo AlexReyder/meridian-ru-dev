@@ -1661,6 +1661,7 @@ export interface Page {
           label: string;
           id?: string | null;
         }[];
+        referenceLinksMode: 'enabled' | 'disabled';
         timelineOptions: {
           value: string;
           label: string;
@@ -3351,6 +3352,7 @@ export interface PagesSelect<T extends boolean = true> {
                     label?: T;
                     id?: T;
                   };
+              referenceLinksMode?: T;
               timelineOptions?:
                 | T
                 | {
