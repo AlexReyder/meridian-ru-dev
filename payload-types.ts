@@ -205,7 +205,17 @@ export interface Page {
    */
   routeType: 'custom' | 'system';
   pageKey?:
-    | ('home' | 'solutions' | 'pricing' | 'get-proposal' | 'concepts' | 'for-startups' | 'for-partners' | 'method')
+    | (
+        | 'home'
+        | 'solutions'
+        | 'pricing'
+        | 'get-proposal'
+        | 'concepts'
+        | 'demo'
+        | 'for-startups'
+        | 'for-partners'
+        | 'method'
+      )
     | null;
   /**
    * Без префикса локали. Например: test или services/fintech-ui
@@ -256,6 +266,7 @@ export interface Page {
               | 'pricing'
               | 'get-proposal'
               | 'concepts'
+              | 'demo'
               | 'for-startups'
               | 'for-partners'
               | 'method'
@@ -269,6 +280,7 @@ export interface Page {
               | 'pricing'
               | 'get-proposal'
               | 'concepts'
+              | 'demo'
               | 'for-startups'
               | 'for-partners'
               | 'method'
@@ -343,6 +355,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -353,6 +366,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -410,6 +424,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -438,6 +453,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -489,6 +505,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -526,6 +543,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -583,6 +601,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -593,6 +612,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -617,6 +637,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -627,6 +648,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -691,6 +713,7 @@ export interface Page {
             | 'pricing'
             | 'get-proposal'
             | 'concepts'
+            | 'demo'
             | 'for-startups'
             | 'for-partners'
             | 'method';
@@ -702,6 +725,7 @@ export interface Page {
                 | 'pricing'
                 | 'get-proposal'
                 | 'concepts'
+                | 'demo'
                 | 'for-startups'
                 | 'for-partners'
                 | 'method'
@@ -747,6 +771,7 @@ export interface Page {
             | 'pricing'
             | 'get-proposal'
             | 'concepts'
+            | 'demo'
             | 'for-startups'
             | 'for-partners'
             | 'method';
@@ -778,6 +803,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -788,6 +814,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -824,6 +851,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -834,6 +862,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -885,6 +914,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -951,6 +981,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -975,6 +1006,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -985,6 +1017,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1023,6 +1056,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1033,6 +1067,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1165,6 +1200,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1194,6 +1230,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1204,6 +1241,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1240,6 +1278,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1250,6 +1289,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1305,6 +1345,7 @@ export interface Page {
             | 'pricing'
             | 'get-proposal'
             | 'concepts'
+            | 'demo'
             | 'for-startups'
             | 'for-partners'
             | 'method';
@@ -1315,6 +1356,7 @@ export interface Page {
             | 'pricing'
             | 'get-proposal'
             | 'concepts'
+            | 'demo'
             | 'for-startups'
             | 'for-partners'
             | 'method';
@@ -1344,6 +1386,7 @@ export interface Page {
             | 'pricing'
             | 'get-proposal'
             | 'concepts'
+            | 'demo'
             | 'for-startups'
             | 'for-partners'
             | 'method';
@@ -1366,6 +1409,7 @@ export interface Page {
               | 'pricing'
               | 'get-proposal'
               | 'concepts'
+              | 'demo'
               | 'for-startups'
               | 'for-partners'
               | 'method'
@@ -1386,6 +1430,7 @@ export interface Page {
               | 'pricing'
               | 'get-proposal'
               | 'concepts'
+              | 'demo'
               | 'for-startups'
               | 'for-partners'
               | 'method'
@@ -1428,6 +1473,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1438,6 +1484,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1468,6 +1515,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1478,6 +1526,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1498,6 +1547,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1508,6 +1558,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1554,6 +1605,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1564,6 +1616,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1694,6 +1747,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1703,6 +1757,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1727,6 +1782,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1746,6 +1802,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1756,6 +1813,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1821,6 +1879,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1852,6 +1911,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1862,6 +1922,7 @@ export interface Page {
           | 'pricing'
           | 'get-proposal'
           | 'concepts'
+          | 'demo'
           | 'for-startups'
           | 'for-partners'
           | 'method';
@@ -1869,6 +1930,156 @@ export interface Page {
         id?: string | null;
         blockName?: string | null;
         blockType: 'ctaConcepts';
+      }
+    | {
+        eyebrow: string;
+        title: string;
+        description: string;
+        supportingText: string;
+        primaryButtonLabel: string;
+        primaryLinkType?: ('page' | 'url') | null;
+        primaryPageKey?:
+          | (
+              | 'home'
+              | 'solutions'
+              | 'pricing'
+              | 'get-proposal'
+              | 'concepts'
+              | 'demo'
+              | 'for-startups'
+              | 'for-partners'
+              | 'method'
+            )
+          | null;
+        /**
+         * Например: /login или https://client.example.com
+         */
+        primaryUrl?: string | null;
+        secondaryButtonLabel: string;
+        secondaryLinkType?: ('page' | 'url') | null;
+        secondaryPageKey?:
+          | (
+              | 'home'
+              | 'solutions'
+              | 'pricing'
+              | 'get-proposal'
+              | 'concepts'
+              | 'demo'
+              | 'for-startups'
+              | 'for-partners'
+              | 'method'
+            )
+          | null;
+        /**
+         * Например: /login или https://client.example.com
+         */
+        secondaryUrl?: string | null;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'heroDemo';
+      }
+    | {
+        filters: {
+          /**
+           * Технический id фильтра. Например: all, b2b, cms, websites
+           */
+          id: string;
+          label: string;
+        }[];
+        resultsLabelOne: string;
+        resultsLabelFew: string;
+        resultsLabelMany: string;
+        whatToShowLabel: string;
+        openDemoLabel: string;
+        projects: {
+          id: string;
+          title: string;
+          category: string;
+          subtitle: string;
+          description: string;
+          label?: string | null;
+          demoUrl: string;
+          /**
+           * Список id фильтров, в которых должен показываться проект. Используйте значения из filters.id
+           */
+          filterIds: {
+            value: string;
+            id?: string | null;
+          }[];
+          tags: {
+            label: string;
+            id?: string | null;
+          }[];
+          whatToShow: {
+            label: string;
+            id?: string | null;
+          }[];
+          imageSource?: ('url' | 'upload') | null;
+          alt: string;
+          imageUrl?: string | null;
+          imageMedia?: (number | null) | Media;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'projectsGridDemo';
+      }
+    | {
+        title: string;
+        description: string;
+        points: {
+          icon: 'play' | 'layers' | 'target';
+          text: string;
+          id?: string | null;
+        }[];
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'explanationDemo';
+      }
+    | {
+        title: string;
+        description: string;
+        primaryButtonLabel: string;
+        primaryLinkType?: ('page' | 'url') | null;
+        primaryPageKey?:
+          | (
+              | 'home'
+              | 'solutions'
+              | 'pricing'
+              | 'get-proposal'
+              | 'concepts'
+              | 'demo'
+              | 'for-startups'
+              | 'for-partners'
+              | 'method'
+            )
+          | null;
+        /**
+         * Например: /login или https://client.example.com
+         */
+        primaryUrl?: string | null;
+        secondaryButtonLabel: string;
+        secondaryLinkType?: ('page' | 'url') | null;
+        secondaryPageKey?:
+          | (
+              | 'home'
+              | 'solutions'
+              | 'pricing'
+              | 'get-proposal'
+              | 'concepts'
+              | 'demo'
+              | 'for-startups'
+              | 'for-partners'
+              | 'method'
+            )
+          | null;
+        /**
+         * Например: /login или https://client.example.com
+         */
+        secondaryUrl?: string | null;
+        supportText: string;
+        id?: string | null;
+        blockName?: string | null;
+        blockType: 'ctaDemo';
       }
   )[];
   updatedAt: string;
@@ -3545,6 +3756,106 @@ export interface PagesSelect<T extends boolean = true> {
               id?: T;
               blockName?: T;
             };
+        heroDemo?:
+          | T
+          | {
+              eyebrow?: T;
+              title?: T;
+              description?: T;
+              supportingText?: T;
+              primaryButtonLabel?: T;
+              primaryLinkType?: T;
+              primaryPageKey?: T;
+              primaryUrl?: T;
+              secondaryButtonLabel?: T;
+              secondaryLinkType?: T;
+              secondaryPageKey?: T;
+              secondaryUrl?: T;
+              id?: T;
+              blockName?: T;
+            };
+        projectsGridDemo?:
+          | T
+          | {
+              filters?:
+                | T
+                | {
+                    id?: T;
+                    label?: T;
+                  };
+              resultsLabelOne?: T;
+              resultsLabelFew?: T;
+              resultsLabelMany?: T;
+              whatToShowLabel?: T;
+              openDemoLabel?: T;
+              projects?:
+                | T
+                | {
+                    id?: T;
+                    title?: T;
+                    category?: T;
+                    subtitle?: T;
+                    description?: T;
+                    label?: T;
+                    demoUrl?: T;
+                    filterIds?:
+                      | T
+                      | {
+                          value?: T;
+                          id?: T;
+                        };
+                    tags?:
+                      | T
+                      | {
+                          label?: T;
+                          id?: T;
+                        };
+                    whatToShow?:
+                      | T
+                      | {
+                          label?: T;
+                          id?: T;
+                        };
+                    imageSource?: T;
+                    alt?: T;
+                    imageUrl?: T;
+                    imageMedia?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        explanationDemo?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              points?:
+                | T
+                | {
+                    icon?: T;
+                    text?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        ctaDemo?:
+          | T
+          | {
+              title?: T;
+              description?: T;
+              primaryButtonLabel?: T;
+              primaryLinkType?: T;
+              primaryPageKey?: T;
+              primaryUrl?: T;
+              secondaryButtonLabel?: T;
+              secondaryLinkType?: T;
+              secondaryPageKey?: T;
+              secondaryUrl?: T;
+              supportText?: T;
+              id?: T;
+              blockName?: T;
+            };
       };
   updatedAt?: T;
   createdAt?: T;
@@ -3667,6 +3978,7 @@ export interface Header {
       | 'pricing'
       | 'get-proposal'
       | 'concepts'
+      | 'demo'
       | 'for-startups'
       | 'for-partners'
       | 'method';
@@ -3702,6 +4014,7 @@ export interface Footer {
                 | 'pricing'
                 | 'get-proposal'
                 | 'concepts'
+                | 'demo'
                 | 'for-startups'
                 | 'for-partners'
                 | 'method'
@@ -3715,7 +4028,17 @@ export interface Footer {
     body?: string | null;
     buttonLabel?: string | null;
     buttonPageKey?:
-      | ('home' | 'solutions' | 'pricing' | 'get-proposal' | 'concepts' | 'for-startups' | 'for-partners' | 'method')
+      | (
+          | 'home'
+          | 'solutions'
+          | 'pricing'
+          | 'get-proposal'
+          | 'concepts'
+          | 'demo'
+          | 'for-startups'
+          | 'for-partners'
+          | 'method'
+        )
       | null;
     buttonHref?: string | null;
     id?: string | null;
@@ -3731,6 +4054,7 @@ export interface Footer {
               | 'pricing'
               | 'get-proposal'
               | 'concepts'
+              | 'demo'
               | 'for-startups'
               | 'for-partners'
               | 'method'

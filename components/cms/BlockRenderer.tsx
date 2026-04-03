@@ -68,6 +68,10 @@ import { ConceptSectionConceptBlockComponent } from './blocks/concepts/ConceptSe
 import { WhyConceptsBlockComponent } from './blocks/concepts/WhyConceptBlock'
 import { CtaConceptsBlockComponent } from './blocks/concepts/CtaConceptBlock'
 import { FinalSupportProposalBlockComponent } from './blocks/get-proposal/FinalSupportProposalBlock'
+import { HeroDemoBlockComponent } from './blocks/demo/HeroDemoBlock'
+import { ProjectsGridDemoBlockComponent } from './blocks/demo/ProjectsGridDemoBlock'
+import { ExplanationDemoBlockComponent } from './blocks/demo/ExplanationDemoBlock'
+import { CTADemoBlockComponent } from './blocks/demo/CTADemoBlock'
 
 type Props = {
   blocks: Array<Record<string, unknown>>
@@ -251,6 +255,27 @@ export function BlockRenderer({ blocks, locale }: Props) {
             locale={locale}
           />
         )     
+        //demo
+                case 'heroDemo':
+          return <HeroDemoBlockComponent key={key} block={block} locale={locale} />
+        case 'projectsGridDemo':
+          return (
+            <ProjectsGridDemoBlockComponent
+              key={key}
+              block={block}
+              locale={locale}
+            />
+          )
+        case 'explanationDemo':
+          return (
+            <ExplanationDemoBlockComponent
+              key={key}
+              block={block}
+              locale={locale}
+            />
+          )
+        case 'ctaDemo':
+          return <CTADemoBlockComponent key={key} block={block} locale={locale} />
           default:
             return null
         }

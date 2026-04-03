@@ -79,6 +79,10 @@ import { ConceptSectionConceptBlock } from '@/blocks/concepts/ConceptSectionConc
 import { WhyConceptsBlock } from '@/blocks/concepts/WhyConceptsBlock'
 import { CtaConceptsBlock } from '@/blocks/concepts/CtaConceptBlock'
 import { FinalSupportProposalBlock } from '@/blocks/get-proposal/FinalSupportProposalBlock'
+import { HeroDemoBlock } from '@/blocks/demo/HeroDemoBlock'
+import { ProjectsGridDemoBlock } from '@/blocks/demo/ProjectsGridDemoBlock'
+import { ExplanationDemoBlock } from '@/blocks/demo/ExplanationDemoBlock'
+import { CTADemoBlock } from '@/blocks/demo/CTADemoBlock'
 
 function normalizeLocale(locale?: string | null): Locale | null {
   return LOCALES.includes(locale as Locale) ? (locale as Locale) : null
@@ -285,6 +289,11 @@ export const Pages: CollectionConfig = {
         ConceptSectionConceptBlock,
         WhyConceptsBlock,
         CtaConceptsBlock,
+        //demo
+        HeroDemoBlock,
+        ProjectsGridDemoBlock,
+        ExplanationDemoBlock,
+        CTADemoBlock,
       ],
     },
   ],

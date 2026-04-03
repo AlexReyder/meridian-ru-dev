@@ -6,6 +6,7 @@ export type PageKey =
   | 'pricing'
   | 'get-proposal'
   | 'concepts'
+  | 'demo'
   | 'for-startups'
   | 'for-partners'
   | 'method'
@@ -27,6 +28,7 @@ export const PAGE_KEYS: PageKey[] = [
   'pricing',
   'get-proposal',
   'concepts',
+  'demo',
   'for-startups',
   'for-partners',
   'method',
@@ -43,6 +45,7 @@ const ROUTE_MAP: Record<PageKey, string[]> = {
   pricing: ['pricing'],
   'get-proposal': ['get-proposal'],
   concepts: ['concepts'],
+  demo: ['demo'],
   'for-startups': ['for-startups'],
   'for-partners': ['for-agencies'],
   method: ['method'],
