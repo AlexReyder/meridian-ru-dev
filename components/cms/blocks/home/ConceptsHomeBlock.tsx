@@ -43,14 +43,16 @@ function resolveConceptImage(concept: ConceptItem) {
 
   const resolvedImageUrl =
     concept.imageSource === 'upload'
-      ? (typeof media === 'object' ? media?.url : concept.imageUrl)
+      ? typeof media === 'object'
+        ? media?.url
+        : concept.imageUrl
       : concept.imageUrl
 
   const resolvedImageAlt =
     concept.imageSource === 'upload'
-      ? (typeof media === 'object'
-          ? concept.imageAlt || media?.alt || concept.title
-          : concept.imageAlt || concept.title)
+      ? typeof media === 'object'
+        ? concept.imageAlt || media?.alt || concept.title
+        : concept.imageAlt || concept.title
       : concept.imageAlt || concept.title
 
   return {
@@ -90,7 +92,7 @@ function ConceptCard({
         />
         <div
           className={cn(
-            'absolute top-0 h-4 w-[2px] bg-signature-cobalt rounded-b-full',
+            'absolute top-0 h-4 w-[2px] rounded-b-full bg-signature-cobalt',
             rtl ? 'right-0' : 'left-0',
           )}
         />
@@ -198,89 +200,135 @@ function ConceptCard({
 export function ConceptsHomeBlockComponent({ block, locale }: Props) {
   const rtl = isRTL(locale)
   const items = useMemo(() => block.items ?? [], [block.items])
+
   const sliderRef = useRef<HTMLDivElement>(null)
   const itemRefs = useRef<Array<HTMLDivElement | null>>([])
   const autoplayRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const currentIndexRef = useRef(0)
+
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
 
   const totalSlides = items.length
   const conceptsHref = getHrefForPageKey(block.conceptsPageKey ?? 'concepts', locale)
 
-  const scrollToIndex = useCallback(
+  const setIndex = useCallback((index: number) => {
+    currentIndexRef.current = index
+    setCurrentIndex(index)
+  }, [])
+
+  const getTargetScrollLeft = useCallback(
     (index: number) => {
-      if (!totalSlides) return
+      const slider = sliderRef.current
+      if (!slider || !totalSlides) return null
+
       const normalized = ((index % totalSlides) + totalSlides) % totalSlides
-      setCurrentIndex(normalized)
-      itemRefs.current[normalized]?.scrollIntoView({
-        behavior: 'smooth',
-        inline: 'start',
-        block: 'nearest',
-      })
+      const targetNode = itemRefs.current[normalized]
+      if (!targetNode) return null
+
+      const sliderRect = slider.getBoundingClientRect()
+      const targetRect = targetNode.getBoundingClientRect()
+      const styles = window.getComputedStyle(slider)
+      const paddingLeft = Number.parseFloat(styles.paddingLeft || '0')
+
+      return slider.scrollLeft + (targetRect.left - sliderRect.left) - paddingLeft
     },
     [totalSlides],
   )
 
-  const nextSlide = useCallback(() => scrollToIndex(currentIndex + 1), [currentIndex, scrollToIndex])
-  const prevSlide = useCallback(() => scrollToIndex(currentIndex - 1), [currentIndex, scrollToIndex])
+  const scrollToIndex = useCallback(
+    (index: number, behavior: ScrollBehavior = 'smooth') => {
+      const slider = sliderRef.current
+      if (!slider || !totalSlides) return
 
-  useEffect(() => {
-    if (!totalSlides || isPaused) {
-      if (autoplayRef.current) clearInterval(autoplayRef.current)
+      const normalized = ((index % totalSlides) + totalSlides) % totalSlides
+      const nextLeft = getTargetScrollLeft(normalized)
+      if (nextLeft === null) return
+
+      slider.scrollTo({
+        left: nextLeft,
+        behavior,
+      })
+
+      setIndex(normalized)
+    },
+    [getTargetScrollLeft, setIndex, totalSlides],
+  )
+
+  const clearAutoplay = useCallback(() => {
+    if (autoplayRef.current) {
+      clearInterval(autoplayRef.current)
       autoplayRef.current = null
-      return
     }
+  }, [])
+
+  const startAutoplay = useCallback(() => {
+    clearAutoplay()
+
+    if (totalSlides <= 1) return
 
     autoplayRef.current = setInterval(() => {
-      const slider = sliderRef.current
-      if (!slider) return
+      const next = currentIndexRef.current + 1
+      scrollToIndex(next)
+    }, 3000)
+  }, [clearAutoplay, scrollToIndex, totalSlides])
 
-      setCurrentIndex((prev) => {
-        const next = (prev + 1) % totalSlides
-        const targetNode = itemRefs.current[next]
+  const nextSlide = useCallback(() => {
+    scrollToIndex(currentIndexRef.current + 1)
+    startAutoplay()
+  }, [scrollToIndex, startAutoplay])
 
-        if (targetNode) {
-          const targetLeft = targetNode.offsetLeft - slider.offsetLeft
+  const prevSlide = useCallback(() => {
+    scrollToIndex(currentIndexRef.current - 1)
+    startAutoplay()
+  }, [scrollToIndex, startAutoplay])
 
-          slider.scrollTo({
-            left: targetLeft,
-            behavior: 'smooth',
-          })
-        }
-
-        return next
-      })
-    }, 5000)
-
-    return () => {
-      if (autoplayRef.current) clearInterval(autoplayRef.current)
-    }
-  }, [isPaused, totalSlides])
+  useEffect(() => {
+    startAutoplay()
+    return () => clearAutoplay()
+  }, [clearAutoplay, startAutoplay])
 
   useEffect(() => {
     const slider = sliderRef.current
     if (!slider || !totalSlides) return
 
+    let ticking = false
+
     const onScroll = () => {
-      const sliderLeft = slider.getBoundingClientRect().left
-      let bestIndex = 0
-      let bestDistance = Number.POSITIVE_INFINITY
+      if (ticking) return
+      ticking = true
 
-      itemRefs.current.forEach((node, index) => {
-        if (!node) return
-        const distance = Math.abs(node.getBoundingClientRect().left - sliderLeft)
-        if (distance < bestDistance) {
-          bestDistance = distance
-          bestIndex = index
-        }
+      requestAnimationFrame(() => {
+        const sliderRect = slider.getBoundingClientRect()
+        const styles = window.getComputedStyle(slider)
+        const paddingLeft = Number.parseFloat(styles.paddingLeft || '0')
+        const targetLeft = sliderRect.left + paddingLeft
+
+        let bestIndex = 0
+        let bestDistance = Number.POSITIVE_INFINITY
+
+        itemRefs.current.forEach((node, index) => {
+          if (!node) return
+
+          const rect = node.getBoundingClientRect()
+          const distance = Math.abs(rect.left - targetLeft)
+
+          if (distance < bestDistance) {
+            bestDistance = distance
+            bestIndex = index
+          }
+        })
+
+        setIndex(bestIndex)
+        ticking = false
       })
-
-      setCurrentIndex(bestIndex)
     }
 
     slider.addEventListener('scroll', onScroll, { passive: true })
-    return () => slider.removeEventListener('scroll', onScroll)
-  }, [totalSlides])
+
+    return () => {
+      slider.removeEventListener('scroll', onScroll)
+    }
+  }, [setIndex, totalSlides])
 
   if (!items.length) return null
 
@@ -290,7 +338,12 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
       className="overflow-hidden bg-secondary/30 py-24 lg:py-32"
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className={cn('mb-12 flex flex-col gap-6 lg:mb-16 lg:flex-row lg:items-end lg:justify-between', rtl && 'lg:flex-row-reverse')}>
+        <div
+          className={cn(
+            'mb-12 flex flex-col gap-6 lg:mb-16 lg:flex-row lg:items-end lg:justify-between',
+            rtl && 'lg:flex-row-reverse',
+          )}
+        >
           <div className={cn('max-w-3xl', rtl && 'text-right')}>
             <div className={cn('mb-4 flex items-center gap-3', rtl && 'flex-row-reverse')}>
               <div className={cn('flex items-center', rtl && 'flex-row-reverse')}>
@@ -306,6 +359,7 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
                   </>
                 )}
               </div>
+
               <span
                 className={cn(
                   'text-[10px] text-muted-foreground',
@@ -327,16 +381,27 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
 
           <div className={cn('hidden items-center gap-3 lg:flex', rtl && 'flex-row-reverse')}>
             <button
+              type="button"
               onClick={rtl ? nextSlide : prevSlide}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-all duration-300 hover:border-foreground/30 hover:text-foreground"
-              aria-label={rtl ? block.nextAriaLabel ?? 'Next concept' : block.previousAriaLabel ?? 'Previous concept'}
+              aria-label={
+                rtl
+                  ? block.nextAriaLabel ?? 'Next concept'
+                  : block.previousAriaLabel ?? 'Previous concept'
+              }
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
+
             <button
+              type="button"
               onClick={rtl ? prevSlide : nextSlide}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-border text-muted-foreground transition-all duration-300 hover:border-foreground/30 hover:text-foreground"
-              aria-label={rtl ? block.previousAriaLabel ?? 'Previous concept' : block.nextAriaLabel ?? 'Next concept'}
+              aria-label={
+                rtl
+                  ? block.previousAriaLabel ?? 'Previous concept'
+                  : block.nextAriaLabel ?? 'Next concept'
+              }
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -344,14 +409,10 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
         </div>
       </div>
 
-      <div
-        className="relative"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
+      <div className="relative">
         <div
           ref={sliderRef}
-          className="flex gap-4 overflow-x-auto px-6 scroll-smooth lg:px-[calc((100vw-1280px)/2+32px)]"
+          className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-6 scroll-smooth lg:px-[calc((100vw-1280px)/2+32px)]"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {items.map((concept, index) => (
@@ -360,7 +421,7 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
               ref={(node) => {
                 itemRefs.current[index] = node
               }}
-              className="snap-start"
+              className="snap-start flex-shrink-0"
             >
               <ConceptCard
                 concept={concept}
@@ -383,16 +444,27 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
         <div className={cn('flex items-center justify-between', rtl && 'flex-row-reverse')}>
           <div className={cn('flex items-center gap-3 lg:hidden', rtl && 'flex-row-reverse')}>
             <button
+              type="button"
               onClick={rtl ? nextSlide : prevSlide}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={rtl ? block.nextAriaLabel ?? 'Next concept' : block.previousAriaLabel ?? 'Previous concept'}
+              aria-label={
+                rtl
+                  ? block.nextAriaLabel ?? 'Next concept'
+                  : block.previousAriaLabel ?? 'Previous concept'
+              }
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
+
             <button
+              type="button"
               onClick={rtl ? prevSlide : nextSlide}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-              aria-label={rtl ? block.previousAriaLabel ?? 'Previous concept' : block.nextAriaLabel ?? 'Next concept'}
+              aria-label={
+                rtl
+                  ? block.previousAriaLabel ?? 'Previous concept'
+                  : block.nextAriaLabel ?? 'Next concept'
+              }
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -402,7 +474,11 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
             {items.map((_, index) => (
               <button
                 key={index}
-                onClick={() => scrollToIndex(index)}
+                type="button"
+                onClick={() => {
+                  scrollToIndex(index)
+                  startAutoplay()
+                }}
                 className={cn(
                   'rounded-full transition-all duration-300',
                   index === currentIndex
@@ -419,11 +495,15 @@ export function ConceptsHomeBlockComponent({ block, locale }: Props) {
               <>
                 <span>{String(totalSlides).padStart(2, '0')}</span>
                 <span>/</span>
-                <span className="font-medium text-foreground">{String(currentIndex + 1).padStart(2, '0')}</span>
+                <span className="font-medium text-foreground">
+                  {String(currentIndex + 1).padStart(2, '0')}
+                </span>
               </>
             ) : (
               <>
-                <span className="font-medium text-foreground">{String(currentIndex + 1).padStart(2, '0')}</span>
+                <span className="font-medium text-foreground">
+                  {String(currentIndex + 1).padStart(2, '0')}
+                </span>
                 <span>/</span>
                 <span>{String(totalSlides).padStart(2, '0')}</span>
               </>

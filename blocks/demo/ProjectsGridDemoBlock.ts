@@ -3,27 +3,30 @@ import type { Block } from 'payload'
 export const ProjectsGridDemoBlock: Block = {
   slug: 'projectsGridDemo',
   labels: {
-    singular: 'Projects Grid Demo',
-    plural: 'Projects Grid Demo blocks',
+    singular: 'Сетка проектов demo',
+    plural: 'Сетки проектов demo',
   },
   fields: [
     {
       name: 'filters',
+      label: 'Фильтры',
       type: 'array',
       required: true,
       minRows: 1,
       fields: [
         {
           name: 'id',
+          label: 'Технический ID фильтра',
           type: 'text',
           required: true,
           admin: {
             description:
-              'Технический id фильтра. Например: all, b2b, cms, websites',
+              'Например: all, b2b, cms, websites. Используется в логике фильтрации.',
           },
         },
         {
           name: 'label',
+          label: 'Название фильтра',
           type: 'text',
           required: true,
         },
@@ -34,6 +37,7 @@ export const ProjectsGridDemoBlock: Block = {
       fields: [
         {
           name: 'resultsLabelOne',
+          label: 'Подпись для 1 результата',
           type: 'text',
           required: true,
           defaultValue: 'проект',
@@ -43,6 +47,7 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'resultsLabelFew',
+          label: 'Подпись для 2-4 результатов',
           type: 'text',
           required: true,
           defaultValue: 'проекта',
@@ -52,6 +57,7 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'resultsLabelMany',
+          label: 'Подпись для 5+ результатов',
           type: 'text',
           required: true,
           defaultValue: 'проектов',
@@ -66,6 +72,7 @@ export const ProjectsGridDemoBlock: Block = {
       fields: [
         {
           name: 'whatToShowLabel',
+          label: 'Заголовок блока с пунктами',
           type: 'text',
           required: true,
           defaultValue: 'Что можно посмотреть',
@@ -75,6 +82,7 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'openDemoLabel',
+          label: 'Текст кнопки открытия демо',
           type: 'text',
           required: true,
           defaultValue: 'Открыть демо',
@@ -86,56 +94,66 @@ export const ProjectsGridDemoBlock: Block = {
     },
     {
       name: 'projects',
+      label: 'Проекты',
       type: 'array',
       required: true,
       minRows: 1,
       fields: [
         {
           name: 'id',
+          label: 'Технический ID проекта',
           type: 'text',
           required: true,
         },
         {
           name: 'title',
+          label: 'Название проекта',
           type: 'text',
           required: true,
         },
         {
           name: 'category',
+          label: 'Категория',
           type: 'text',
           required: true,
         },
         {
           name: 'subtitle',
+          label: 'Короткое описание',
           type: 'textarea',
           required: true,
         },
         {
           name: 'description',
+          label: 'Полное описание',
           type: 'textarea',
           required: true,
         },
         {
           name: 'label',
+          label: 'Плашка на карточке',
           type: 'text',
         },
         {
           name: 'demoUrl',
+          label: 'Ссылка на демо',
           type: 'text',
           required: true,
         },
         {
           name: 'filterIds',
+          label: 'ID фильтров',
           type: 'array',
           required: true,
           minRows: 1,
           admin: {
             description:
-              'Список id фильтров, в которых должен показываться проект. Используйте значения из filters.id',
+              'Укажи ID фильтров, в которых должен показываться проект. Значения должны совпадать с filters.id',
           },
           fields: [
             {
               name: 'value',
+              label: 'ID фильтра',
               type: 'text',
               required: true,
             },
@@ -143,12 +161,14 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'tags',
+          label: 'Теги',
           type: 'array',
           required: true,
           minRows: 1,
           fields: [
             {
               name: 'label',
+              label: 'Текст тега',
               type: 'text',
               required: true,
             },
@@ -156,12 +176,14 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'whatToShow',
+          label: 'Что можно посмотреть',
           type: 'array',
           required: true,
           minRows: 1,
           fields: [
             {
               name: 'label',
+              label: 'Пункт списка',
               type: 'text',
               required: true,
             },
@@ -205,7 +227,7 @@ export const ProjectsGridDemoBlock: Block = {
         },
         {
           name: 'imageMedia',
-          label: 'Выберите файл',
+          label: 'Загруженное изображение',
           type: 'upload',
           relationTo: 'media',
           required: true,

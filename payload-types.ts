@@ -1635,6 +1635,25 @@ export interface Page {
           text: string;
           id?: string | null;
         }[];
+        cabinetButtonLabel: string;
+        cabinetLinkType?: ('page' | 'url') | null;
+        cabinetPageKey?:
+          | (
+              | 'home'
+              | 'solutions'
+              | 'pricing'
+              | 'get-proposal'
+              | 'concepts'
+              | 'demo'
+              | 'for-startups'
+              | 'for-partners'
+              | 'method'
+            )
+          | null;
+        /**
+         * Например: https://client.example.com
+         */
+        cabinetUrl?: string | null;
         brandParagraph: string;
         id?: string | null;
         blockName?: string | null;
@@ -1981,7 +2000,7 @@ export interface Page {
     | {
         filters: {
           /**
-           * Технический id фильтра. Например: all, b2b, cms, websites
+           * Например: all, b2b, cms, websites. Используется в логике фильтрации.
            */
           id: string;
           label: string;
@@ -2000,7 +2019,7 @@ export interface Page {
           label?: string | null;
           demoUrl: string;
           /**
-           * Список id фильтров, в которых должен показываться проект. Используйте значения из filters.id
+           * Укажи ID фильтров, в которых должен показываться проект. Значения должны совпадать с filters.id
            */
           filterIds: {
             value: string;
@@ -3481,6 +3500,10 @@ export interface PagesSelect<T extends boolean = true> {
                     text?: T;
                     id?: T;
                   };
+              cabinetButtonLabel?: T;
+              cabinetLinkType?: T;
+              cabinetPageKey?: T;
+              cabinetUrl?: T;
               brandParagraph?: T;
               id?: T;
               blockName?: T;

@@ -5,24 +5,27 @@ import { PAGE_KEY_OPTIONS } from '../../lib/routes'
 export const HeroDemoBlock: Block = {
   slug: 'heroDemo',
   labels: {
-    singular: 'Hero Demo',
-    plural: 'Hero Demo blocks',
+    singular: 'Главный экран demo',
+    plural: 'Главные экраны demo',
   },
   fields: [
     {
       name: 'eyebrow',
+      label: 'Надзаголовок',
       type: 'text',
       required: true,
       defaultValue: 'Портфолио студии',
     },
     {
       name: 'title',
+      label: 'Заголовок',
       type: 'textarea',
       required: true,
       defaultValue: 'Реализованные проекты',
     },
     {
       name: 'description',
+      label: 'Основное описание',
       type: 'textarea',
       required: true,
       defaultValue:
@@ -30,6 +33,7 @@ export const HeroDemoBlock: Block = {
     },
     {
       name: 'supportingText',
+      label: 'Дополнительный текст',
       type: 'textarea',
       required: true,
       defaultValue:
@@ -38,6 +42,7 @@ export const HeroDemoBlock: Block = {
 
     {
       name: 'primaryButtonLabel',
+      label: 'Текст первой кнопки',
       type: 'text',
       required: true,
       defaultValue: 'Обсудить похожий проект',
@@ -74,6 +79,7 @@ export const HeroDemoBlock: Block = {
 
     {
       name: 'secondaryButtonLabel',
+      label: 'Текст второй кнопки',
       type: 'text',
       required: true,
       defaultValue: 'Перейти в личный кабинет',

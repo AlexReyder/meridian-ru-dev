@@ -5,18 +5,20 @@ import { PAGE_KEY_OPTIONS } from '../../lib/routes'
 export const CTADemoBlock: Block = {
   slug: 'ctaDemo',
   labels: {
-    singular: 'CTA Demo',
-    plural: 'CTA Demo blocks',
+    singular: 'Финальный CTA demo',
+    plural: 'Финальные CTA demo',
   },
   fields: [
     {
       name: 'title',
+      label: 'Заголовок',
       type: 'textarea',
       required: true,
       defaultValue: 'Нужен проект такого уровня?',
     },
     {
       name: 'description',
+      label: 'Описание',
       type: 'textarea',
       required: true,
       defaultValue:
@@ -25,6 +27,7 @@ export const CTADemoBlock: Block = {
 
     {
       name: 'primaryButtonLabel',
+      label: 'Текст первой кнопки',
       type: 'text',
       required: true,
       defaultValue: 'Обсудить проект',
@@ -61,6 +64,7 @@ export const CTADemoBlock: Block = {
 
     {
       name: 'secondaryButtonLabel',
+      label: 'Текст второй кнопки',
       type: 'text',
       required: true,
       defaultValue: 'Перейти в личный кабинет',
@@ -97,6 +101,7 @@ export const CTADemoBlock: Block = {
 
     {
       name: 'supportText',
+      label: 'Дополнительный текст',
       type: 'textarea',
       required: true,
       defaultValue:

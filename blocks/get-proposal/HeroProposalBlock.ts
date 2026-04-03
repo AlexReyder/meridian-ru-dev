@@ -1,26 +1,31 @@
 import type { Block } from 'payload'
 
+import { PAGE_KEY_OPTIONS } from '../../lib/routes'
+
 export const HeroProposalBlock: Block = {
   slug: 'heroProposal',
   labels: {
-    singular: 'Hero Proposal',
-    plural: 'Hero Proposal blocks',
+    singular: 'Главный экран страницы get proposal',
+    plural: 'Главные экраны страницы get proposal',
   },
   fields: [
     {
       name: 'eyebrow',
+      label: 'Надзаголовок',
       type: 'text',
       required: true,
       defaultValue: 'Получить предложение',
     },
     {
       name: 'title',
+      label: 'Заголовок',
       type: 'textarea',
       required: true,
       defaultValue: 'Закажите дизайн сайта, системы или мобильного приложения',
     },
     {
       name: 'description',
+      label: 'Описание',
       type: 'textarea',
       required: true,
       defaultValue:
@@ -28,11 +33,13 @@ export const HeroProposalBlock: Block = {
     },
     {
       name: 'supportLine',
+      label: 'Дополнительная строка',
       type: 'text',
       defaultValue: '',
     },
     {
       name: 'reassuranceItems',
+      label: 'Пункты доверия',
       type: 'array',
       required: true,
       minRows: 1,
@@ -45,6 +52,7 @@ export const HeroProposalBlock: Block = {
       fields: [
         {
           name: 'icon',
+          label: 'Иконка',
           type: 'select',
           dbName: 'hppr_icon',
           required: true,
@@ -58,13 +66,54 @@ export const HeroProposalBlock: Block = {
         },
         {
           name: 'text',
+          label: 'Текст',
           type: 'text',
           required: true,
         },
       ],
     },
+
+    {
+      name: 'cabinetButtonLabel',
+      label: 'Текст кнопки личного кабинета',
+      type: 'text',
+      required: true,
+      defaultValue: 'Перейти в личный кабинет',
+    },
+    {
+      name: 'cabinetLinkType',
+      label: 'Тип ссылки кнопки личного кабинета',
+      type: 'radio',
+      defaultValue: 'page',
+      options: [
+        { label: 'Страница сайта', value: 'page' },
+        { label: 'Произвольная ссылка', value: 'url' },
+      ],
+    },
+    {
+      name: 'cabinetPageKey',
+      label: 'Страница кнопки личного кабинета',
+      type: 'select',
+      dbName: 'hppr_cab_pk',
+      options: PAGE_KEY_OPTIONS,
+      defaultValue: 'home',
+      admin: {
+        condition: (_, siblingData) => siblingData?.cabinetLinkType === 'page',
+      },
+    },
+    {
+      name: 'cabinetUrl',
+      label: 'URL кнопки личного кабинета',
+      type: 'text',
+      admin: {
+        description: 'Например: https://client.example.com',
+        condition: (_, siblingData) => siblingData?.cabinetLinkType === 'url',
+      },
+    },
+
     {
       name: 'brandParagraph',
+      label: 'Нижний абзац',
       type: 'textarea',
       required: true,
       defaultValue:
